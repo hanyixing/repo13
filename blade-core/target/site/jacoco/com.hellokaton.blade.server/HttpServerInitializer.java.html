@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HttpServerInitializer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.server</a> &gt; <span class="el_source">HttpServerInitializer.java</span></div><h1>HttpServerInitializer.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.server;
+
+import com.hellokaton.blade.Blade;
+import com.hellokaton.blade.Environment;
+import com.hellokaton.blade.kit.DateKit;
+import com.hellokaton.blade.options.CorsOptions;
+import com.hellokaton.blade.options.HttpOptions;
+import com.hellokaton.blade.options.StaticOptions;
+import com.hellokaton.blade.server.decode.FullHttpRequestDecode;
+import com.hellokaton.blade.server.decode.HttpObjectAggregatorDecode;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.HttpServerExpectContinueHandler;
+import io.netty.handler.codec.http.cors.CorsConfig;
+import io.netty.handler.codec.http.cors.CorsConfigBuilder;
+import io.netty.handler.codec.http.cors.CorsHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.stream.ChunkedWriteHandler;
+import lombok.extern.slf4j.Slf4j;
+
+import java.time.LocalDateTime;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import static com.hellokaton.blade.mvc.BladeConst.*;
+
+/**
+ * HttpServerInitializer
+ */
+<span class="fc" id="L34">@Slf4j</span>
+public class HttpServerInitializer extends ChannelInitializer&lt;SocketChannel&gt; {
+
+    private final HttpServerHandler httpServerHandler;
+    private final SslContext sslCtx;
+    private CorsConfig corsConfig;
+    private int maxContentSize;
+    private boolean enableGzip;
+
+<span class="fc" id="L43">    public static volatile String date = DateKit.gmtDate(LocalDateTime.now());</span>
+
+
+<span class="fc" id="L46">    public HttpServerInitializer(SslContext sslCtx, Blade blade, ScheduledExecutorService service) {</span>
+<span class="fc" id="L47">        this.sslCtx = sslCtx;</span>
+<span class="fc" id="L48">        this.httpServerHandler = new HttpServerHandler();</span>
+<span class="fc" id="L49">        this.mergeCorsConfig(blade.corsOptions());</span>
+<span class="fc" id="L50">        this.mergeStaticOptions(blade.staticOptions(), blade.environment());</span>
+<span class="fc" id="L51">        this.mergeHttpOptions(blade.httpOptions(), blade.environment());</span>
+<span class="fc" id="L52">        service.scheduleWithFixedDelay(() -&gt; date = DateKit.gmtDate(LocalDateTime.now()), 1000, 1000, TimeUnit.MILLISECONDS);</span>
+<span class="fc" id="L53">    }</span>
+
+
+    @Override
+    protected void initChannel(SocketChannel ch) {
+<span class="fc" id="L58">        ChannelPipeline pipeline = ch.pipeline();</span>
+        try {
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">            if (sslCtx != null) {</span>
+<span class="nc" id="L61">                pipeline.addLast(sslCtx.newHandler(ch.alloc()));</span>
+            }
+<span class="fc" id="L63">            pipeline.addLast(new HttpServerCodec());</span>
+<span class="fc" id="L64">            pipeline.addLast(new HttpObjectAggregatorDecode(maxContentSize));</span>
+<span class="fc" id="L65">            pipeline.addLast(new HttpServerExpectContinueHandler());</span>
+
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">            if (enableGzip) {</span>
+<span class="nc" id="L68">                pipeline.addLast(new HttpContentCompressor());</span>
+            }
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">            if (null != corsConfig) {</span>
+<span class="nc" id="L71">                pipeline.addLast(new CorsHandler(corsConfig));</span>
+            }
+<span class="fc" id="L73">            pipeline.addLast(new FullHttpRequestDecode());</span>
+<span class="fc" id="L74">            pipeline.addLast(new ChunkedWriteHandler());</span>
+<span class="fc" id="L75">            pipeline.addLast(httpServerHandler);</span>
+<span class="nc" id="L76">        } catch (Exception e) {</span>
+<span class="nc" id="L77">            log.error(&quot;Add channel pipeline error&quot;, e);</span>
+<span class="fc" id="L78">        }</span>
+<span class="fc" id="L79">    }</span>
+
+    private void mergeCorsConfig(CorsOptions corsOptions) {
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        if (null == corsOptions) {</span>
+<span class="fc" id="L83">            return;</span>
+        }
+<span class="nc" id="L85">        CorsConfigBuilder corsConfigBuilder = null;</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (corsOptions.isAnyOrigin()) {</span>
+<span class="nc" id="L87">            corsConfigBuilder = CorsConfigBuilder.forAnyOrigin();</span>
+        }
+<span class="nc bnc" id="L89" title="All 4 branches missed.">        if (null != corsOptions.getOrigins() &amp;&amp; !corsOptions.getOrigins().isEmpty()) {</span>
+<span class="nc" id="L90">            corsConfigBuilder = CorsConfigBuilder.forOrigins(corsOptions.getOrigins().toArray(new String[0]));</span>
+        }
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (null == corsConfigBuilder) {</span>
+<span class="nc" id="L93">            return;</span>
+        }
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (corsOptions.isAllowNullOrigin()) {</span>
+<span class="nc" id="L96">            corsConfigBuilder.allowNullOrigin();</span>
+        }
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (corsOptions.isAllowCredentials()) {</span>
+<span class="nc" id="L99">            corsConfigBuilder.allowCredentials();</span>
+        }
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (corsOptions.isDisable()) {</span>
+<span class="nc" id="L102">            corsConfigBuilder.disable();</span>
+        }
+<span class="nc" id="L104">        corsConfigBuilder.maxAge(corsOptions.getMaxAge());</span>
+
+<span class="nc bnc" id="L106" title="All 4 branches missed.">        if (null != corsOptions.getExposeHeaders() &amp;&amp; !corsOptions.getExposeHeaders().isEmpty()) {</span>
+<span class="nc" id="L107">            corsConfigBuilder.exposeHeaders(corsOptions.getExposeHeaders().toArray(new String[0]));</span>
+        }
+<span class="nc bnc" id="L109" title="All 4 branches missed.">        if (null != corsOptions.getAllowedMethods() &amp;&amp; !corsOptions.getAllowedMethods().isEmpty()) {</span>
+<span class="nc" id="L110">            corsConfigBuilder.allowedRequestMethods(corsOptions.getAllowedMethods().stream()</span>
+<span class="nc" id="L111">                    .map(item -&gt; HttpMethod.valueOf(item.name()))</span>
+<span class="nc" id="L112">                    .toArray(HttpMethod[]::new));</span>
+        }
+<span class="nc bnc" id="L114" title="All 4 branches missed.">        if (null != corsOptions.getAllowedHeaders() &amp;&amp; !corsOptions.getAllowedHeaders().isEmpty()) {</span>
+<span class="nc" id="L115">            corsConfigBuilder.allowedRequestHeaders(corsOptions.getAllowedHeaders().toArray(new String[0]));</span>
+        }
+<span class="nc" id="L117">        this.corsConfig = corsConfigBuilder.build();</span>
+<span class="nc" id="L118">    }</span>
+
+    private void mergeStaticOptions(StaticOptions staticOptions, Environment environment) {
+<span class="fc" id="L121">        int cacheSeconds = staticOptions.getCacheSeconds();</span>
+<span class="pc bpc" id="L122" title="2 of 4 branches missed.">        if (cacheSeconds &gt; 0 &amp;&amp; StaticOptions.DEFAULT_CACHE_SECONDS != cacheSeconds) {</span>
+<span class="nc" id="L123">            environment.set(ENV_KEY_STATIC_CACHE_SECONDS, cacheSeconds);</span>
+        } else {
+<span class="fc" id="L125">            cacheSeconds = environment.getInt(ENV_KEY_STATIC_CACHE_SECONDS, StaticOptions.DEFAULT_CACHE_SECONDS);</span>
+<span class="fc" id="L126">            staticOptions.setCacheSeconds(cacheSeconds);</span>
+        }
+
+<span class="fc" id="L129">        boolean showList = staticOptions.isShowList();</span>
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">        if (showList) {</span>
+<span class="nc" id="L131">            environment.set(ENV_KEY_STATIC_LIST, true);</span>
+        } else {
+<span class="fc" id="L133">            showList = environment.getBoolean(ENV_KEY_STATIC_LIST, Boolean.FALSE);</span>
+<span class="fc" id="L134">            staticOptions.setShowList(showList);</span>
+        }
+<span class="fc" id="L136">    }</span>
+
+    private void mergeHttpOptions(HttpOptions httpOptions, Environment environment) {
+<span class="fc" id="L139">        this.maxContentSize = httpOptions.getMaxContentSize();</span>
+<span class="fc" id="L140">        this.enableGzip = httpOptions.isEnableGzip();</span>
+
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">        if (this.maxContentSize != HttpOptions.DEFAULT_MAX_CONTENT_SIZE) {</span>
+<span class="nc" id="L143">            environment.set(ENV_KEY_HTTP_MAX_CONTENT, this.maxContentSize);</span>
+        } else {
+<span class="fc" id="L145">            this.maxContentSize = environment.getInt(ENV_KEY_HTTP_MAX_CONTENT, HttpOptions.DEFAULT_MAX_CONTENT_SIZE);</span>
+<span class="fc" id="L146">            httpOptions.setMaxContentSize(maxContentSize);</span>
+        }
+
+<span class="pc bpc" id="L149" title="1 of 2 branches missed.">        if (this.enableGzip) {</span>
+<span class="nc" id="L150">            environment.set(ENV_KEY_GZIP_ENABLE, true);</span>
+        } else {
+<span class="fc" id="L152">            this.enableGzip = environment.getBoolean(ENV_KEY_GZIP_ENABLE, false);</span>
+<span class="fc" id="L153">            httpOptions.setEnableGzip(enableGzip);</span>
+        }
+
+<span class="fc" id="L156">        boolean requestCost = httpOptions.isEnableRequestCost();</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">        if (requestCost) {</span>
+<span class="nc" id="L158">            environment.set(ENV_KEY_HTTP_REQUEST_COST, true);</span>
+        } else {
+<span class="fc" id="L160">            requestCost = environment.getBoolean(ENV_KEY_HTTP_REQUEST_COST, false);</span>
+<span class="fc" id="L161">            httpOptions.setEnableRequestCost(requestCost);</span>
+        }
+
+<span class="fc" id="L164">        boolean enableSession = httpOptions.isEnableSession();</span>
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">        if (enableSession) {</span>
+<span class="nc" id="L166">            environment.set(ENV_KEY_SESSION_ENABLED, true);</span>
+        } else {
+<span class="fc" id="L168">            enableSession = environment.getBoolean(ENV_KEY_SESSION_ENABLED, false);</span>
+<span class="fc" id="L169">            httpOptions.setEnableSession(enableSession);</span>
+        }
+<span class="fc" id="L171">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

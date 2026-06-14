@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Session.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.http</a> &gt; <span class="el_source">Session.java</span></div><h1>Session.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.http;
+
+import java.util.Map;
+
+/**
+ * Session
+ *
+ * @author &lt;a href=&quot;mailto:hellokaton@gmail.com&quot; target=&quot;_blank&quot;&gt;hellokaton&lt;/a&gt;
+ * @since 1.5
+ */
+public interface Session {
+
+    /**
+     * Get current session id
+     *
+     * @return return session id
+     */
+    String id();
+
+    /**
+     * Set session id
+     *
+     * @param id session id
+     */
+    void id(String id);
+
+    /**
+     * Get current session client ip address
+     *
+     * @return return request ip address
+     */
+    String ip();
+
+    /**
+     * Set current session client ip address
+     *
+     * @param ip ip address
+     */
+    void ip(String ip);
+
+    /**
+     * Get current session attribute by name
+     *
+     * @param name attribute name
+     * @param &lt;T&gt;  Class Type
+     * @return return attribute
+     */
+    &lt;T&gt; T attribute(String name);
+
+    /**
+     * Set current session attribute
+     *
+     * @param name  attribute name
+     * @param value attribute value
+     */
+    void attribute(String name, Object value);
+
+    /**
+     * Get current session attributes
+     *
+     * @return return attributes
+     */
+    Map&lt;String, Object&gt; attributes();
+
+    /**
+     * Remove current session attribute
+     *
+     * @param name
+     */
+    default void remove(String name) {
+<span class="nc" id="L71">        removeAttribute(name);</span>
+<span class="nc" id="L72">    }</span>
+
+    /**
+     * Remove current session attribute
+     *
+     * @param name
+     */
+    void removeAttribute(String name);
+
+    /**
+     * Get current session create unix time.
+     *
+     * @return return created time
+     */
+    long created();
+
+    /**
+     * Set session created unix time
+     *
+     * @param created created time
+     */
+    void created(long created);
+
+    /**
+     * Get current session expired unix time.
+     *
+     * @return return expired time
+     */
+    long expired();
+
+    /**
+     * Set session expired unix time
+     *
+     * @param expired expired time
+     */
+    void expired(long expired);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

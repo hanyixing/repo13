@@ -62,9 +62,29 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- mockito-all removed: conflicts with mockito-core 4.x (duplicate classes) -->
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -93,34 +113,6 @@
                     <source>1.8</source>
                     <target>1.8</target>
                     <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>cobertura-maven-plugin</artifactId>
-                <version>2.7</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.ow2.asm</groupId>
-                        <artifactId>asm</artifactId>
-                        <version>5.0.4</version>
-                    </dependency>
-                </dependencies>
-                <configuration>
-                    <formats>
-                        <format>html</format>
-                        <format>xml</format>
-                    </formats>
-                    <instrumentation>
-                        <excludes>
-                            <exclude>com/blade/ioc/annotation/*.class</exclude>
-                            <exclude>com/blade/mvc/annotation/*.class</exclude>
-                            <exclude>com/blade/kit/*.class</exclude>
-                            <exclude>com/blade/server/*.class</exclude>
-                            <exclude>netty_hello/*.class</exclude>
-                        </excludes>
-                    </instrumentation>
-                    <check/>
                 </configuration>
             </plugin>
         </plugins>

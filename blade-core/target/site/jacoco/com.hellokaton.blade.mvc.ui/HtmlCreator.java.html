@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HtmlCreator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.ui</a> &gt; <span class="el_source">HtmlCreator.java</span></div><h1>HtmlCreator.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.ui;
+
+import com.hellokaton.blade.mvc.BladeConst;
+
+import java.util.List;
+
+public class HtmlCreator {
+
+    private static final String HTML_FOOTER = &quot;&lt;br/&gt;&lt;p&gt;&lt;center&gt;Copyright © &lt;a href='https://github.com/lets-blade/blade' target='_blank'&gt;Blade-&quot; + BladeConst.VERSION + &quot;&lt;/a&gt;&lt;/center&gt;&lt;/p&gt;&lt;br/&gt;&quot;;
+
+<span class="fc" id="L11">    private final StringBuilder html = new StringBuilder();</span>
+
+<span class="fc" id="L13">    public HtmlCreator() {</span>
+<span class="fc" id="L14">        html.append(&quot;&lt;!DOCTYPE html&gt;&quot;);</span>
+<span class="fc" id="L15">        html.append(&quot;&lt;head&gt;&quot;);</span>
+<span class="fc" id="L16">        html.append(&quot;&lt;meta charset=\&quot;utf-8\&quot;&gt;&quot;);</span>
+<span class="fc" id="L17">        html.append(&quot;&lt;style type='text/css'&gt;.version{padding:10px;text-decoration-line: none;}.message-header{&quot; +</span>
+                &quot;background-color: #900C3F;\n&quot; +
+                &quot;color: #fff;\n&quot; +
+                &quot;font-weight: bold;&quot; +
+                &quot;-webkit-box-align: center;\n&quot; +
+                &quot;-ms-flex-align: center;\n&quot; +
+                &quot;align-items: center;\n&quot; +
+                &quot;color: #fff;\n&quot; +
+                &quot;display: -webkit-box;\n&quot; +
+                &quot;display: -ms-flexbox;\n&quot; +
+                &quot;display: flex;\n&quot; +
+                &quot;-webkit-box-pack: justify;\n&quot; +
+                &quot;-ms-flex-pack: justify;\n&quot; +
+                &quot;justify-content: space-between;\n&quot; +
+                &quot;line-height: 1.25;\n&quot; +
+                &quot;padding: 0.5em 0.75em;\n&quot; +
+                &quot;position: relative;&quot; +
+                &quot;}&quot; +
+                &quot;.message-body{&quot; +
+                &quot;background-color: #fff5f7;&quot; +
+                &quot;font-size:1rem;&quot; +
+                &quot;border-color: #ff3860;\n&quot; +
+                &quot;color: #900C3F;\n&quot; +
+                &quot;border-top-left-radius: 0;\n&quot; +
+                &quot;border-top-right-radius: 0;\n&quot; +
+                &quot;border-top: none;\n&quot; +
+                &quot;border: 1px solid #dbdbdb;\n&quot; +
+                &quot;border-radius: 3px;\n&quot; +
+                &quot;padding: 1em 1.25em;&quot; +
+                &quot;}&lt;/style&gt;&quot;);
+<span class="fc" id="L47">    }</span>
+
+    public HtmlCreator title(String title) {
+<span class="fc" id="L50">        html.append(&quot;&lt;title&gt;&quot;).append(title).append(&quot;&lt;/title&gt;&quot;);</span>
+<span class="fc" id="L51">        return this;</span>
+    }
+
+    public HtmlCreator h1(String heading) {
+<span class="fc" id="L55">        html.append(&quot;&lt;/head&gt;&quot;);</span>
+<span class="fc" id="L56">        html.append(&quot;&lt;body&gt;&quot;);</span>
+<span class="fc" id="L57">        html.append(&quot;&lt;h1&gt;&quot;).append(heading).append(&quot;&lt;/h1&gt;&quot;);</span>
+<span class="fc" id="L58">        return this;</span>
+    }
+
+    public HtmlCreator h2(String heading) {
+<span class="fc" id="L62">        html.append(&quot;&lt;h2&gt;&quot;).append(heading).append(&quot;&lt;/h2&gt;&quot;);</span>
+<span class="fc" id="L63">        return this;</span>
+    }
+
+    public HtmlCreator paragraph(String paragraph) {
+<span class="nc" id="L67">        html.append(&quot;&lt;p&gt;&quot;).append(paragraph).append(&quot;&lt;/p&gt;&quot;);</span>
+<span class="nc" id="L68">        return this;</span>
+    }
+
+    public HtmlCreator startP() {
+<span class="fc" id="L72">        html.append(&quot;&lt;p&gt;&quot;);</span>
+<span class="fc" id="L73">        return this;</span>
+    }
+
+    public HtmlCreator startP(String className) {
+<span class="fc" id="L77">        html.append(&quot;&lt;p class='&quot; + className + &quot;'&gt;&quot;);</span>
+<span class="fc" id="L78">        return this;</span>
+    }
+
+    public HtmlCreator addBold(String text) {
+<span class="fc" id="L82">        html.append(&quot;&lt;b&gt;&quot;).append(text).append(&quot;&lt;/b&gt;&quot;);</span>
+<span class="fc" id="L83">        return this;</span>
+    }
+
+    public HtmlCreator endP() {
+<span class="fc" id="L87">        html.append(&quot;&lt;/p&gt;&quot;);</span>
+<span class="fc" id="L88">        return this;</span>
+    }
+
+    public HtmlCreator hr() {
+<span class="fc" id="L92">        html.append(&quot;&lt;hr/&gt;&quot;);</span>
+<span class="fc" id="L93">        return this;</span>
+    }
+
+    public HtmlCreator br() {
+<span class="fc" id="L97">        html.append(&quot;&lt;br/&gt;&quot;);</span>
+<span class="fc" id="L98">        return this;</span>
+    }
+
+    public HtmlCreator addTableWithHeaders(List&lt;String&gt; headers) {
+<span class="nc" id="L102">        html.append(&quot;&lt;table&gt;&quot;);</span>
+<span class="nc" id="L103">        html.append(&quot;&lt;tr&gt;&quot;);</span>
+<span class="nc" id="L104">        headers.forEach((h) -&gt; html.append(&quot;&lt;th&gt;&quot;).append(h).append(&quot;&lt;/th&gt;&quot;));</span>
+<span class="nc" id="L105">        html.append(&quot;&lt;/tr&gt;&quot;);</span>
+<span class="nc" id="L106">        return this;</span>
+    }
+
+    public HtmlCreator addRowToTable(List&lt;String&gt; rowElements) {
+<span class="fc" id="L110">        html.append(&quot;&lt;tr&gt;&quot;);</span>
+<span class="fc" id="L111">        rowElements.forEach((re) -&gt; html.append(&quot;&lt;td&gt;&quot;).append(re).append(&quot;&lt;/td&gt;&quot;));</span>
+<span class="fc" id="L112">        html.append(&quot;&lt;/tr&gt;&quot;);</span>
+<span class="fc" id="L113">        return this;</span>
+    }
+
+    public HtmlCreator endTable() {
+<span class="nc" id="L117">        html.append(&quot;&lt;/table&gt;&quot;);</span>
+<span class="nc" id="L118">        return this;</span>
+    }
+
+    public HtmlCreator startStyle() {
+<span class="nc" id="L122">        html.append(&quot;&lt;style type='text/css'&gt;&quot;);</span>
+<span class="nc" id="L123">        return this;</span>
+    }
+
+    public HtmlCreator endStyle() {
+<span class="nc" id="L127">        html.append(&quot;&lt;/style&gt;&quot;);</span>
+<span class="nc" id="L128">        return this;</span>
+    }
+
+    public HtmlCreator centerHeadings() {
+<span class="nc" id="L132">        html.append(&quot;h1, h2 { text-align: center; }&quot;);</span>
+<span class="nc" id="L133">        return this;</span>
+    }
+
+    public HtmlCreator add(String text) {
+<span class="fc" id="L137">        html.append(text);</span>
+<span class="fc" id="L138">        return this;</span>
+    }
+
+    public HtmlCreator styleTables() {
+<span class="nc" id="L142">        html.append(&quot;table, th, td { margin: 0 auto; border: 1px solid black; border-collapse: collapse; text-align: center; }&quot;);</span>
+<span class="nc" id="L143">        return this;</span>
+    }
+
+    public HtmlCreator center(String text) {
+<span class="fc" id="L147">        html.append(&quot;&lt;center&gt;&quot;).append(text).append(&quot;&lt;/center&gt;&quot;);</span>
+<span class="fc" id="L148">        return this;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L153">        return html.toString();</span>
+    }
+
+    public String html() {
+<span class="fc" id="L157">        html.append(HTML_FOOTER);</span>
+<span class="fc" id="L158">        html.append(&quot;&lt;/body&gt;&quot;);</span>
+<span class="fc" id="L159">        return html.toString();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

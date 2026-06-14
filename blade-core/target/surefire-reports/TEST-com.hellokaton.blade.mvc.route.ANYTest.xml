@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.hellokaton.blade.mvc.route.ANYTest" time="0.003" tests="6" errors="1" skipped="0" failures="0">
+  <properties>
+    <property name="sun.desktop" value="windows"/>
+    <property name="awt.toolkit" value="sun.awt.windows.WToolkit"/>
+    <property name="file.encoding.pkg" value="sun.io"/>
+    <property name="java.specification.version" value="1.8"/>
+    <property name="sun.cpu.isalist" value="amd64"/>
+    <property name="sun.jnu.encoding" value="GBK"/>
+    <property name="java.class.path" value="E:\trae\hyx\codeL1\repos\repo13\repo\blade-core\target\test-classes;E:\trae\hyx\codeL1\repos\repo13\repo\blade-core\target\classes;D:\maven\repository\com\hellokaton\blade-kit\2.1.2.RELEASE\blade-kit-2.1.2.RELEASE.jar;D:\maven\repository\com\hellokaton\blade-asm\0.1.1\blade-asm-0.1.1.jar;D:\maven\repository\com\google\code\gson\gson\2.9.0\gson-2.9.0.jar;D:\maven\repository\com\hellokaton\blade-log\0.2.0\blade-log-0.2.0.jar;D:\maven\repository\org\slf4j\slf4j-api\1.7.36\slf4j-api-1.7.36.jar;D:\maven\repository\io\netty\netty-codec-http\4.1.76.Final\netty-codec-http-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-common\4.1.76.Final\netty-common-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-buffer\4.1.76.Final\netty-buffer-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport\4.1.76.Final\netty-transport-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-codec\4.1.76.Final\netty-codec-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-handler\4.1.76.Final\netty-handler-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-resolver\4.1.76.Final\netty-resolver-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport-native-epoll\4.1.76.Final\netty-transport-native-epoll-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport-native-unix-common\4.1.76.Final\netty-transport-native-unix-common-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport-classes-epoll\4.1.76.Final\netty-transport-classes-epoll-4.1.76.Final.jar;D:\maven\repository\junit\junit\4.13.2\junit-4.13.2.jar;D:\maven\repository\org\hamcrest\hamcrest-core\1.3\hamcrest-core-1.3.jar;D:\maven\repository\com\carrotsearch\junit-benchmarks\0.7.2\junit-benchmarks-0.7.2.jar;D:\maven\repository\org\webjars\bootstrap\4.1.0\bootstrap-4.1.0.jar;D:\maven\repository\org\webjars\jquery\3.0.0\jquery-3.0.0.jar;D:\maven\repository\org\webjars\popper.js\1.14.1\popper.js-1.14.1.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter\5.9.3\junit-jupiter-5.9.3.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter-api\5.9.3\junit-jupiter-api-5.9.3.jar;D:\maven\repository\org\opentest4j\opentest4j\1.2.0\opentest4j-1.2.0.jar;D:\maven\repository\org\junit\platform\junit-platform-commons\1.9.3\junit-platform-commons-1.9.3.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter-params\5.9.3\junit-jupiter-params-5.9.3.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter-engine\5.9.3\junit-jupiter-engine-5.9.3.jar;D:\maven\repository\org\junit\vintage\junit-vintage-engine\5.9.3\junit-vintage-engine-5.9.3.jar;D:\maven\repository\org\junit\platform\junit-platform-engine\1.9.3\junit-platform-engine-1.9.3.jar;D:\maven\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;D:\maven\repository\org\mockito\mockito-core\4.11.0\mockito-core-4.11.0.jar;D:\maven\repository\net\bytebuddy\byte-buddy\1.12.19\byte-buddy-1.12.19.jar;D:\maven\repository\net\bytebuddy\byte-buddy-agent\1.12.19\byte-buddy-agent-1.12.19.jar;D:\maven\repository\org\objenesis\objenesis\3.3\objenesis-3.3.jar;D:\maven\repository\org\mockito\mockito-junit-jupiter\4.11.0\mockito-junit-jupiter-4.11.0.jar;D:\maven\repository\com\mashape\unirest\unirest-java\1.4.9\unirest-java-1.4.9.jar;D:\maven\repository\org\apache\httpcomponents\httpclient\4.5.2\httpclient-4.5.2.jar;D:\maven\repository\org\apache\httpcomponents\httpcore\4.4.4\httpcore-4.4.4.jar;D:\maven\repository\commons-logging\commons-logging\1.2\commons-logging-1.2.jar;D:\maven\repository\commons-codec\commons-codec\1.9\commons-codec-1.9.jar;D:\maven\repository\org\apache\httpcomponents\httpasyncclient\4.1.1\httpasyncclient-4.1.1.jar;D:\maven\repository\org\apache\httpcomponents\httpcore-nio\4.4.4\httpcore-nio-4.4.4.jar;D:\maven\repository\org\apache\httpcomponents\httpmime\4.5.2\httpmime-4.5.2.jar;D:\maven\repository\org\json\json\20160212\json-20160212.jar;D:\maven\repository\org\projectlombok\lombok\1.18.24\lombok-1.18.24.jar;"/>
+    <property name="java.vm.vendor" value="Oracle Corporation"/>
+    <property name="sun.arch.data.model" value="64"/>
+    <property name="user.variant" value=""/>
+    <property name="java.vendor.url" value="http://java.oracle.com/"/>
+    <property name="user.timezone" value="Asia/Shanghai"/>
+    <property name="java.vm.specification.version" value="1.8"/>
+    <property name="os.name" value="Windows 10"/>
+    <property name="user.country" value="CN"/>
+    <property name="sun.java.launcher" value="SUN_STANDARD"/>
+    <property name="sun.boot.library.path" value="C:\Program Files\Java\jre1.8.0_172\bin"/>
+    <property name="sun.java.command" value="C:\Users\Administrator\AppData\Local\Temp\surefire7978050599877012063\surefirebooter-20260614194652778_3.jar C:\Users\Administrator\AppData\Local\Temp\surefire7978050599877012063 2026-06-14T19-46-52_013-jvmRun1 surefire-20260614194652778_1tmp surefire_0-20260614194652778_2tmp"/>
+    <property name="surefire.test.class.path" value="E:\trae\hyx\codeL1\repos\repo13\repo\blade-core\target\test-classes;E:\trae\hyx\codeL1\repos\repo13\repo\blade-core\target\classes;D:\maven\repository\com\hellokaton\blade-kit\2.1.2.RELEASE\blade-kit-2.1.2.RELEASE.jar;D:\maven\repository\com\hellokaton\blade-asm\0.1.1\blade-asm-0.1.1.jar;D:\maven\repository\com\google\code\gson\gson\2.9.0\gson-2.9.0.jar;D:\maven\repository\com\hellokaton\blade-log\0.2.0\blade-log-0.2.0.jar;D:\maven\repository\org\slf4j\slf4j-api\1.7.36\slf4j-api-1.7.36.jar;D:\maven\repository\io\netty\netty-codec-http\4.1.76.Final\netty-codec-http-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-common\4.1.76.Final\netty-common-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-buffer\4.1.76.Final\netty-buffer-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport\4.1.76.Final\netty-transport-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-codec\4.1.76.Final\netty-codec-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-handler\4.1.76.Final\netty-handler-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-resolver\4.1.76.Final\netty-resolver-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport-native-epoll\4.1.76.Final\netty-transport-native-epoll-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport-native-unix-common\4.1.76.Final\netty-transport-native-unix-common-4.1.76.Final.jar;D:\maven\repository\io\netty\netty-transport-classes-epoll\4.1.76.Final\netty-transport-classes-epoll-4.1.76.Final.jar;D:\maven\repository\junit\junit\4.13.2\junit-4.13.2.jar;D:\maven\repository\org\hamcrest\hamcrest-core\1.3\hamcrest-core-1.3.jar;D:\maven\repository\com\carrotsearch\junit-benchmarks\0.7.2\junit-benchmarks-0.7.2.jar;D:\maven\repository\org\webjars\bootstrap\4.1.0\bootstrap-4.1.0.jar;D:\maven\repository\org\webjars\jquery\3.0.0\jquery-3.0.0.jar;D:\maven\repository\org\webjars\popper.js\1.14.1\popper.js-1.14.1.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter\5.9.3\junit-jupiter-5.9.3.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter-api\5.9.3\junit-jupiter-api-5.9.3.jar;D:\maven\repository\org\opentest4j\opentest4j\1.2.0\opentest4j-1.2.0.jar;D:\maven\repository\org\junit\platform\junit-platform-commons\1.9.3\junit-platform-commons-1.9.3.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter-params\5.9.3\junit-jupiter-params-5.9.3.jar;D:\maven\repository\org\junit\jupiter\junit-jupiter-engine\5.9.3\junit-jupiter-engine-5.9.3.jar;D:\maven\repository\org\junit\vintage\junit-vintage-engine\5.9.3\junit-vintage-engine-5.9.3.jar;D:\maven\repository\org\junit\platform\junit-platform-engine\1.9.3\junit-platform-engine-1.9.3.jar;D:\maven\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;D:\maven\repository\org\mockito\mockito-core\4.11.0\mockito-core-4.11.0.jar;D:\maven\repository\net\bytebuddy\byte-buddy\1.12.19\byte-buddy-1.12.19.jar;D:\maven\repository\net\bytebuddy\byte-buddy-agent\1.12.19\byte-buddy-agent-1.12.19.jar;D:\maven\repository\org\objenesis\objenesis\3.3\objenesis-3.3.jar;D:\maven\repository\org\mockito\mockito-junit-jupiter\4.11.0\mockito-junit-jupiter-4.11.0.jar;D:\maven\repository\com\mashape\unirest\unirest-java\1.4.9\unirest-java-1.4.9.jar;D:\maven\repository\org\apache\httpcomponents\httpclient\4.5.2\httpclient-4.5.2.jar;D:\maven\repository\org\apache\httpcomponents\httpcore\4.4.4\httpcore-4.4.4.jar;D:\maven\repository\commons-logging\commons-logging\1.2\commons-logging-1.2.jar;D:\maven\repository\commons-codec\commons-codec\1.9\commons-codec-1.9.jar;D:\maven\repository\org\apache\httpcomponents\httpasyncclient\4.1.1\httpasyncclient-4.1.1.jar;D:\maven\repository\org\apache\httpcomponents\httpcore-nio\4.4.4\httpcore-nio-4.4.4.jar;D:\maven\repository\org\apache\httpcomponents\httpmime\4.5.2\httpmime-4.5.2.jar;D:\maven\repository\org\json\json\20160212\json-20160212.jar;D:\maven\repository\org\projectlombok\lombok\1.18.24\lombok-1.18.24.jar;"/>
+    <property name="sun.cpu.endian" value="little"/>
+    <property name="user.home" value="C:\Users\Administrator"/>
+    <property name="user.language" value="zh"/>
+    <property name="maven.compiler.fork" value="true"/>
+    <property name="java.specification.vendor" value="Oracle Corporation"/>
+    <property name="java.home" value="C:\Program Files\Java\jre1.8.0_172"/>
+    <property name="basedir" value="E:\trae\hyx\codeL1\repos\repo13\repo\blade-core"/>
+    <property name="file.separator" value="\"/>
+    <property name="line.separator" value="&#10;"/>
+    <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
+    <property name="java.specification.name" value="Java Platform API Specification"/>
+    <property name="java.awt.graphicsenv" value="sun.awt.Win32GraphicsEnvironment"/>
+    <property name="surefire.real.class.path" value="C:\Users\Administrator\AppData\Local\Temp\surefire7978050599877012063\surefirebooter-20260614194652778_3.jar;D:\\maven\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.11\\org.jacoco.agent-0.8.11-runtime.jar"/>
+    <property name="sun.boot.class.path" value="C:\Program Files\Java\jre1.8.0_172\lib\resources.jar;C:\Program Files\Java\jre1.8.0_172\lib\rt.jar;C:\Program Files\Java\jre1.8.0_172\lib\sunrsasign.jar;C:\Program Files\Java\jre1.8.0_172\lib\jsse.jar;C:\Program Files\Java\jre1.8.0_172\lib\jce.jar;C:\Program Files\Java\jre1.8.0_172\lib\charsets.jar;C:\Program Files\Java\jre1.8.0_172\lib\jfr.jar;C:\Program Files\Java\jre1.8.0_172\classes"/>
+    <property name="user.script" value=""/>
+    <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
+    <property name="java.runtime.version" value="1.8.0_172-b11"/>
+    <property name="user.name" value="Administrator"/>
+    <property name="path.separator" value=";"/>
+    <property name="os.version" value="10.0"/>
+    <property name="java.endorsed.dirs" value="C:\Program Files\Java\jre1.8.0_172\lib\endorsed"/>
+    <property name="java.runtime.name" value="Java(TM) SE Runtime Environment"/>
+    <property name="file.encoding" value="GBK"/>
+    <property name="java.vm.name" value="Java HotSpot(TM) 64-Bit Server VM"/>
+    <property name="localRepository" value="D:\maven\repository"/>
+    <property name="java.vendor.url.bug" value="http://bugreport.sun.com/bugreport/"/>
+    <property name="java.io.tmpdir" value="C:\Users\ADMINI~1\AppData\Local\Temp\"/>
+    <property name="java.version" value="1.8.0_172"/>
+    <property name="user.dir" value="E:\trae\hyx\codeL1\repos\repo13\repo\blade-core"/>
+    <property name="os.arch" value="amd64"/>
+    <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
+    <property name="java.awt.printerjob" value="sun.awt.windows.WPrinterJob"/>
+    <property name="sun.os.patch.level" value=""/>
+    <property name="maven.compiler.executable" value="C:/Program Files/Java/jdk1.8.0_172/bin/javac"/>
+    <property name="java.library.path" value="C:\Program Files\Java\jre1.8.0_172\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\Users\Administrator\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\local\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\Administrator\bin;C:\Program Files (x86)\NetSarang\Xshell 6;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files\Git\cmd;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\dotnet;C:\Program Files\NVIDIA Corporation\NVIDIA app\NvDLISR;D:\weixinkaifaz\微信web开发者工具\dll;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\nodejs;C:\Program Files\GitHub CLI;C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Scripts;C:\Users\Administrator\AppData\Local\Programs\Python\Python312;C:\Users\Administrator\AppData\Local\Programs\Python\Launcher;C:\Program Files\Java\jdk1.8.0_172\bin;C:\Users\Administrator\.trae-cn\tools\maven\latest\bin;C:\Users\Administrator\.trae-cn\tools\gradle\latest\bin;C:\Users\Administrator\.trae-cn\tools\trae-gopls\current;C:\Users\Administrator\.trae-cn\sdks\workspaces\d7944aad\versions\node\current;C:\Users\Administrator\.trae-cn\sdks\versions\node\current;C:\Program Files\Java\jdk1.8.0_172\bin;C:\Users\Administrator\.trae-cn\tools\maven\latest\bin;C:\Users\Administrator\.trae-cn\tools\gradle\latest\bin;C:\Users\Administrator\.trae-cn\tools\trae-gopls\current;C:\Users\Administrator\.trae-cn\sdks\workspaces\d7944aad\versions\node\current;C:\Users\Administrator\.trae-cn\sdks\versions\node\current;C:\Program Files (x86)\NetSarang\Xshell 6;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files\Git\cmd;C:\Program Files (x86)\NVIDIA Corporatio;C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.28.240.0_x64__8wekyb3d8bbwe;C:\Users\Administrator\AppData\Roaming\npm;C:\Program Files\Git\usr\bin\vendor_perl;C:\Program Files\Git\usr\bin\core_perl;."/>
+    <property name="java.vm.info" value="mixed mode"/>
+    <property name="java.vendor" value="Oracle Corporation"/>
+    <property name="java.vm.version" value="25.172-b11"/>
+    <property name="java.ext.dirs" value="C:\Program Files\Java\jre1.8.0_172\lib\ext;C:\WINDOWS\Sun\Java\lib\ext"/>
+    <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
+    <property name="java.class.version" value="52.0"/>
+  </properties>
+  <testcase name="testBuildRoute" classname="com.hellokaton.blade.mvc.route.ANYTest" time="0.001"/>
+  <testcase name="testPath" classname="com.hellokaton.blade.mvc.route.ANYTest" time="0.0"/>
+  <testcase name="testSort" classname="com.hellokaton.blade.mvc.route.ANYTest" time="0.001"/>
+  <testcase name="testPathParams" classname="com.hellokaton.blade.mvc.route.ANYTest" time="0.0">
+    <error type="java.lang.NullPointerException"><![CDATA[java.lang.NullPointerException
+	at com.hellokaton.blade.mvc.route.ANYTest.testPathParams(ANYTest.java:60)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source)
+	at java.lang.reflect.Method.invoke(Unknown Source)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+	at org.junit.vintage.engine.execution.RunnerExecutor.execute(RunnerExecutor.java:42)
+	at org.junit.vintage.engine.VintageTestEngine.executeAllChildren(VintageTestEngine.java:80)
+	at org.junit.vintage.engine.VintageTestEngine.execute(VintageTestEngine.java:72)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:147)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:127)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:90)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:55)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:102)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:54)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:86)
+	at org.junit.platform.launcher.core.DefaultLauncherSession$DelegatingLauncher.execute(DefaultLauncherSession.java:86)
+	at org.apache.maven.surefire.junitplatform.LazyLauncher.execute(LazyLauncher.java:56)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:184)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:148)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:122)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+]]></error>
+  </testcase>
+  <testcase name="testHttpMethod" classname="com.hellokaton.blade.mvc.route.ANYTest" time="0.001"/>
+  <testcase name="testRobotsRequest" classname="com.hellokaton.blade.mvc.route.ANYTest" time="0.0"/>
+</testsuite>

@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HttpResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.http</a> &gt; <span class="el_source">HttpResponse.java</span></div><h1>HttpResponse.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.http;
+
+import com.hellokaton.blade.mvc.HttpConst;
+import com.hellokaton.blade.mvc.ui.ModelAndView;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
+
+/**
+ * HttpResponse
+ *
+ * @author biezhi
+ * 2017/5/31
+ */
+<span class="fc" id="L23">@Slf4j</span>
+public class HttpResponse implements Response {
+
+<span class="fc" id="L26">    private final Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L27">    private final Set&lt;Cookie&gt; cookies = new HashSet&lt;&gt;();</span>
+
+<span class="fc" id="L29">    private int statusCode = 200;</span>
+    private Body body;
+
+    @Override
+    public int statusCode() {
+<span class="fc" id="L34">        return this.statusCode;</span>
+    }
+
+    @Override
+    public Response status(int status) {
+<span class="fc" id="L39">        this.statusCode = status;</span>
+<span class="fc" id="L40">        return this;</span>
+    }
+
+    @Override
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">    public Response contentType(@NonNull String contentType) {</span>
+<span class="fc" id="L45">        this.headers.put(&quot;Content-Type&quot;, contentType);</span>
+<span class="fc" id="L46">        return this;</span>
+    }
+
+    @Override
+    public String contentType() {
+<span class="fc" id="L51">        return this.headers.get(&quot;Content-Type&quot;);</span>
+    }
+
+    @Override
+    public Map&lt;String, String&gt; headers() {
+<span class="fc" id="L56">        return this.headers;</span>
+    }
+
+    @Override
+    public Response header(String name, String value) {
+<span class="fc" id="L61">        this.headers.put(name, value);</span>
+<span class="fc" id="L62">        return this;</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L66" title="All 2 branches missed.">    public Response cookie(@NonNull com.hellokaton.blade.mvc.http.Cookie cookie) {</span>
+<span class="nc" id="L67">        Cookie nettyCookie = new io.netty.handler.codec.http.cookie.DefaultCookie(cookie.name(), cookie.value());</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (cookie.domain() != null) {</span>
+<span class="nc" id="L69">            nettyCookie.setDomain(cookie.domain());</span>
+        }
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (cookie.maxAge() &gt; 0) {</span>
+<span class="nc" id="L72">            nettyCookie.setMaxAge(cookie.maxAge());</span>
+        }
+<span class="nc" id="L74">        nettyCookie.setPath(cookie.path());</span>
+<span class="nc" id="L75">        nettyCookie.setHttpOnly(cookie.httpOnly());</span>
+<span class="nc" id="L76">        nettyCookie.setSecure(cookie.secure());</span>
+<span class="nc" id="L77">        this.cookies.add(nettyCookie);</span>
+<span class="nc" id="L78">        return this;</span>
+    }
+
+    @Override
+    public Response cookie(String name, String value) {
+<span class="nc" id="L83">        this.cookies.add(new io.netty.handler.codec.http.cookie.DefaultCookie(name, value));</span>
+<span class="nc" id="L84">        return this;</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L88" title="All 4 branches missed.">    public Response cookie(@NonNull String name, @NonNull String value, int maxAge) {</span>
+<span class="nc" id="L89">        Cookie nettyCookie = new io.netty.handler.codec.http.cookie.DefaultCookie(name, value);</span>
+<span class="nc" id="L90">        nettyCookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L91">        nettyCookie.setMaxAge(maxAge);</span>
+<span class="nc" id="L92">        this.cookies.add(nettyCookie);</span>
+<span class="nc" id="L93">        return this;</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L97" title="All 4 branches missed.">    public Response cookie(@NonNull String name, @NonNull String value, int maxAge, boolean secured) {</span>
+<span class="nc" id="L98">        Cookie nettyCookie = new io.netty.handler.codec.http.cookie.DefaultCookie(name, value);</span>
+<span class="nc" id="L99">        nettyCookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L100">        nettyCookie.setMaxAge(maxAge);</span>
+<span class="nc" id="L101">        nettyCookie.setSecure(secured);</span>
+<span class="nc" id="L102">        this.cookies.add(nettyCookie);</span>
+<span class="nc" id="L103">        return this;</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L107" title="All 6 branches missed.">    public Response cookie(@NonNull String path, @NonNull String name, @NonNull String value, int maxAge, boolean secured) {</span>
+<span class="nc" id="L108">        Cookie nettyCookie = new io.netty.handler.codec.http.cookie.DefaultCookie(name, value);</span>
+<span class="nc" id="L109">        nettyCookie.setMaxAge(maxAge);</span>
+<span class="nc" id="L110">        nettyCookie.setSecure(secured);</span>
+<span class="nc" id="L111">        nettyCookie.setPath(path);</span>
+<span class="nc" id="L112">        this.cookies.add(nettyCookie);</span>
+<span class="nc" id="L113">        return this;</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L117" title="All 2 branches missed.">    public Response removeCookie(@NonNull String name) {</span>
+<span class="nc" id="L118">        Optional&lt;Cookie&gt; cookieOpt = this.cookies.stream().filter(cookie -&gt; cookie.name().equals(name)).findFirst();</span>
+<span class="nc" id="L119">        cookieOpt.ifPresent(cookie -&gt; {</span>
+<span class="nc" id="L120">            cookie.setValue(&quot;&quot;);</span>
+<span class="nc" id="L121">            cookie.setMaxAge(-1);</span>
+<span class="nc" id="L122">        });</span>
+<span class="nc" id="L123">        Cookie nettyCookie = new io.netty.handler.codec.http.cookie.DefaultCookie(name, &quot;&quot;);</span>
+<span class="nc" id="L124">        nettyCookie.setMaxAge(-1);</span>
+<span class="nc" id="L125">        this.cookies.add(nettyCookie);</span>
+<span class="nc" id="L126">        return this;</span>
+    }
+
+    @Override
+    public Map&lt;String, String&gt; cookies() {
+<span class="fc" id="L131">        Map&lt;String, String&gt; map = new HashMap&lt;&gt;(8);</span>
+<span class="fc" id="L132">        this.cookies.forEach(cookie -&gt; map.put(cookie.name(), cookie.value()));</span>
+<span class="fc" id="L133">        return map;</span>
+    }
+
+    @Override
+    public Set&lt;Cookie&gt; cookiesRaw() {
+<span class="fc" id="L138">        return this.cookies;</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L142" title="All 2 branches missed.">    public void render(@NonNull ModelAndView modelAndView) {</span>
+<span class="nc" id="L143">        this.body = new ViewBody(modelAndView);</span>
+<span class="nc" id="L144">    }</span>
+
+    @Override
+    public void toStatic(StaticFileBody body) {
+<span class="nc" id="L148">        this.body = body;</span>
+<span class="nc" id="L149">    }</span>
+
+    @Override
+<span class="nc bnc" id="L152" title="All 2 branches missed.">    public void redirect(@NonNull String newUri) {</span>
+<span class="nc" id="L153">        headers.put(HttpConst.HEADER_LOCATION, newUri);</span>
+<span class="nc" id="L154">        this.status(302);</span>
+<span class="nc" id="L155">    }</span>
+
+    @Override
+    public void write(File file) throws IOException {
+<span class="nc" id="L159">        this.body = ChannelBody.of(file);</span>
+<span class="nc" id="L160">    }</span>
+
+    @Override
+    public void write(String fileName, File file) throws IOException {
+<span class="nc" id="L164">        FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ);</span>
+<span class="nc" id="L165">        headers.put(&quot;Content-Disposition&quot;, &quot;attachment; filename=&quot; + new String(fileName.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1));</span>
+<span class="nc" id="L166">        this.body = new ChannelBody(null, fileChannel);</span>
+<span class="nc" id="L167">    }</span>
+
+    @Override
+    public ModelAndView modelAndView() {
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        if (this.body instanceof ViewBody) {</span>
+<span class="nc" id="L172">            return ((ViewBody) this.body).modelAndView();</span>
+        }
+<span class="nc" id="L174">        return null;</span>
+    }
+
+<span class="fc" id="L177">    public HttpResponse(Response response) {</span>
+<span class="fc" id="L178">        this.statusCode = response.statusCode();</span>
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">        if (null != response.headers()) {</span>
+<span class="fc" id="L180">            response.headers().forEach(this.headers::put);</span>
+        }
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">        if (null != response.cookies()) {</span>
+<span class="fc" id="L183">            response.cookies().forEach((k, v) -&gt; this.cookies.add(new DefaultCookie(k, v)));</span>
+        }
+<span class="fc" id="L185">    }</span>
+
+<span class="fc" id="L187">    public HttpResponse() {</span>
+
+<span class="fc" id="L189">    }</span>
+
+    @Override
+    public Body body() {
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">        if (null == this.body) {</span>
+<span class="nc" id="L194">            return EmptyBody.empty();</span>
+        }
+<span class="fc" id="L196">        return this.body;</span>
+    }
+
+    @Override
+    public Response body(Body body) {
+<span class="fc" id="L201">        this.body = body;</span>
+<span class="fc" id="L202">        return this;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

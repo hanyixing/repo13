@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SessionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.handler</a> &gt; <span class="el_source">SessionHandler.java</span></div><h1>SessionHandler.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2018, biezhi 王爵 nice (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.mvc.handler;
+
+import com.hellokaton.blade.Blade;
+import com.hellokaton.blade.Environment;
+import com.hellokaton.blade.exception.InternalErrorException;
+import com.hellokaton.blade.kit.ReflectKit;
+import com.hellokaton.blade.kit.StringKit;
+import com.hellokaton.blade.kit.UUID;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.http.Session;
+import com.hellokaton.blade.mvc.http.session.SessionManager;
+import com.hellokaton.blade.options.HttpOptions;
+
+import java.time.Instant;
+
+import static com.hellokaton.blade.mvc.BladeConst.ENV_KEY_SESSION_KEY;
+import static com.hellokaton.blade.mvc.BladeConst.ENV_KEY_SESSION_TIMEOUT;
+
+/**
+ * session handler
+ *
+ * @author biezhi
+ * 2017/6/3
+ */
+public class SessionHandler {
+
+    private final Class&lt;? extends Session&gt; sessionType;
+    private final SessionManager sessionManager;
+    private int timeout;
+    private String sessionKey;
+
+<span class="nc" id="L47">    public SessionHandler(Blade blade) {</span>
+<span class="nc" id="L48">        this.sessionType = blade.httpOptions().getSessionType();</span>
+<span class="nc" id="L49">        this.sessionManager = blade.sessionManager();</span>
+
+<span class="nc" id="L51">        this.initOptions(blade.httpOptions(), blade.environment());</span>
+<span class="nc" id="L52">    }</span>
+
+    public Session createSession(Request request) {
+<span class="nc" id="L55">        Session session = getSession(request);</span>
+
+<span class="nc" id="L57">        long now = Instant.now().getEpochSecond();</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">        if (null == session) {</span>
+<span class="nc" id="L59">            long expired = now + timeout;</span>
+<span class="nc" id="L60">            session = ReflectKit.newInstance(sessionType);</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">            if (null == session) {</span>
+<span class="nc" id="L62">                throw new InternalErrorException(&quot;Unable to create session object :(&quot;);</span>
+            }
+<span class="nc" id="L64">            session.id(UUID.UU32());</span>
+<span class="nc" id="L65">            session.created(now);</span>
+<span class="nc" id="L66">            session.expired(expired);</span>
+<span class="nc" id="L67">            sessionManager.createSession(session);</span>
+<span class="nc" id="L68">            return session;</span>
+        } else {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">            if (session.expired() &lt; now) {</span>
+<span class="nc" id="L71">                sessionManager.destroySession(session);</span>
+            } else {
+                // renewal
+<span class="nc" id="L74">                long expired = now + timeout;</span>
+<span class="nc" id="L75">                session.expired(expired);</span>
+            }
+        }
+<span class="nc" id="L78">        return session;</span>
+    }
+
+    private Session getSession(Request request) {
+<span class="nc" id="L82">        String cookieHeader = request.cookie(this.sessionKey);</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        if (StringKit.isEmpty(cookieHeader)) {</span>
+<span class="nc" id="L84">            return null;</span>
+        }
+<span class="nc" id="L86">        return sessionManager.getSession(cookieHeader);</span>
+    }
+
+    private void initOptions(HttpOptions httpOptions, Environment environment) {
+<span class="nc" id="L90">        this.timeout = httpOptions.getSessionTimeout();</span>
+<span class="nc" id="L91">        this.sessionKey = httpOptions.getSessionKey();</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (this.timeout != HttpOptions.DEFAULT_SESSION_TIMEOUT) {</span>
+<span class="nc" id="L93">            environment.set(ENV_KEY_SESSION_TIMEOUT, this.timeout);</span>
+        } else {
+<span class="nc" id="L95">            this.timeout = environment.getInt(ENV_KEY_SESSION_TIMEOUT, HttpOptions.DEFAULT_SESSION_TIMEOUT);</span>
+<span class="nc" id="L96">            httpOptions.setSessionTimeout(this.timeout);</span>
+        }
+
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (!HttpOptions.DEFAULT_SESSION_KEY.equals(this.sessionKey)) {</span>
+<span class="nc" id="L100">            environment.set(ENV_KEY_SESSION_KEY, this.sessionKey);</span>
+        } else {
+<span class="nc" id="L102">            this.sessionKey = environment.get(ENV_KEY_SESSION_KEY, HttpOptions.DEFAULT_SESSION_KEY);</span>
+<span class="nc" id="L103">            httpOptions.setSessionKey(this.sessionKey);</span>
+        }
+<span class="nc" id="L105">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

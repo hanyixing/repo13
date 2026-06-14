@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PathRegexBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.route</a> &gt; <span class="el_source">PathRegexBuilder.java</span></div><h1>PathRegexBuilder.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.route;
+
+import com.hellokaton.blade.kit.StringKit;
+
+import java.util.Arrays;
+
+/**
+ * build regex path
+ *
+ * @author &lt;a href=&quot;mailto:chenchen_839@126.com&quot; target=&quot;_blank&quot;&gt;ccqy66&lt;/a&gt;
+ * @since 2.0
+ */
+public class PathRegexBuilder {
+
+    private final static String PATH_VARIABLE_REPLACE = &quot;([^/]+)&quot;;
+    private final static String DEFAULT_SEPARATOR     = &quot;/&quot;;
+    private final static String DEFAULT_START         = &quot;(/&quot;;
+    private final static String DEFAULT_END           = &quot;)|&quot;;
+
+    private final StringBuilder pathBuilder;
+    private final String        separator;
+
+<span class="nc" id="L23">    public PathRegexBuilder() {</span>
+<span class="nc" id="L24">        this.pathBuilder = new StringBuilder(DEFAULT_START);</span>
+<span class="nc" id="L25">        this.separator = DEFAULT_SEPARATOR;</span>
+<span class="nc" id="L26">    }</span>
+
+    private void join(PathBuilderMeta row) {
+<span class="nc bnc" id="L29" title="All 2 branches missed.">        if (row.getType() == PathBuilderMeta.PathTypeEnum.COMMON) {</span>
+<span class="nc" id="L30">            pathBuilder.append(row.getName()).append(separator);</span>
+        } else {
+<span class="nc" id="L32">            pathBuilder.append(row.getRegex()).append(separator);</span>
+        }
+<span class="nc" id="L34">    }</span>
+
+    public String build(boolean isSuffix) {
+<span class="nc bnc" id="L37" title="All 2 branches missed.">        if (isSuffix) {</span>
+<span class="nc" id="L38">            pathBuilder.append(DEFAULT_END);</span>
+        }
+<span class="nc" id="L40">        return pathBuilder.toString();</span>
+    }
+
+    public String parsePath(String path) {
+<span class="nc bnc" id="L44" title="All 2 branches missed.">        if (StringKit.isBlank(path)) return path;</span>
+<span class="nc" id="L45">        String[] pathModule = path.split(&quot;/&quot;);</span>
+
+<span class="nc" id="L47">        Arrays.stream(pathModule)</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">                .filter(row -&gt; !row.isEmpty())</span>
+<span class="nc" id="L49">                .map(this::rowToPath)</span>
+<span class="nc" id="L50">                .forEach(this::join);</span>
+
+<span class="nc" id="L52">        pathBuilder.deleteCharAt(pathBuilder.length() - 1);</span>
+<span class="nc" id="L53">        return build(true);</span>
+    }
+
+    private PathBuilderMeta rowToPath(String row) {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        if (!row.contains(&quot;:&quot;)) {</span>
+<span class="nc" id="L58">            return PathBuilderMeta.builder()</span>
+<span class="nc" id="L59">                    .name(row)</span>
+<span class="nc" id="L60">                    .type(PathBuilderMeta.PathTypeEnum.COMMON)</span>
+<span class="nc" id="L61">                    .build();</span>
+        }
+<span class="nc" id="L63">        String[] itemPath = row.split(&quot;:&quot;);</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (StringKit.isBlank(itemPath[0])) {</span>
+<span class="nc" id="L65">            return PathBuilderMeta.builder()</span>
+<span class="nc" id="L66">                    .name(itemPath[1])</span>
+<span class="nc" id="L67">                    .regex(PATH_VARIABLE_REPLACE)</span>
+<span class="nc" id="L68">                    .type(PathBuilderMeta.PathTypeEnum.PARAM)</span>
+<span class="nc" id="L69">                    .build();</span>
+        } else {
+<span class="nc" id="L71">            return PathBuilderMeta.builder()</span>
+<span class="nc" id="L72">                    .name(itemPath[0])</span>
+<span class="nc" id="L73">                    .regex(&quot;(&quot; + itemPath[1] + &quot;)&quot;)</span>
+<span class="nc" id="L74">                    .type(PathBuilderMeta.PathTypeEnum.REGEX)</span>
+<span class="nc" id="L75">                    .build();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

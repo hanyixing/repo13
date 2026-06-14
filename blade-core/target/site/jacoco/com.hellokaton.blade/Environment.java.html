@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Environment.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade</a> &gt; <span class="el_source">Environment.java</span></div><h1>Environment.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade;
+
+import com.hellokaton.blade.kit.IOKit;
+import com.hellokaton.blade.kit.ReflectKit;
+import com.hellokaton.blade.server.NettyHttpConst;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+
+import static java.util.Optional.ofNullable;
+
+/**
+ * Blade environment config
+ * &lt;p&gt;
+ * This class can help you to load the properties type of the configuration file,
+ * and easy to read、write
+ *
+ * @author biezhi
+ * 2017/6/1
+ */
+<span class="fc" id="L46">@Slf4j</span>
+<span class="fc" id="L47">@NoArgsConstructor(access = AccessLevel.PRIVATE)</span>
+public class Environment {
+
+    private static final String      PREFIX_CLASSPATH = &quot;classpath:&quot;;
+    private static final String      PREFIX_FILE      = &quot;file:&quot;;
+    private static final String      PREFIX_URL       = &quot;url:&quot;;
+<span class="fc" id="L53">    private static final Environment EMPTY_ENV        = new Environment();</span>
+
+    /**
+     * Save the internal configuration
+     */
+<span class="fc" id="L58">    private Properties props = new Properties();</span>
+
+    /**
+     * Create an empty environment
+     *
+     * @return return Environment instance
+     */
+    public static Environment empty() {
+<span class="fc" id="L66">        return new Environment();</span>
+    }
+
+    /**
+     * Properties to Environment
+     *
+     * @param props properties instance
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">    public static Environment of(@NonNull Properties props) {</span>
+<span class="fc" id="L76">        var environment = new Environment();</span>
+<span class="fc" id="L77">        environment.props = props;</span>
+<span class="fc" id="L78">        return environment;</span>
+    }
+
+    /**
+     * Map to Environment
+     *
+     * @param map config map
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">    public static Environment of(@NonNull Map&lt;String, String&gt; map) {</span>
+<span class="fc" id="L88">        var environment = new Environment();</span>
+<span class="fc" id="L89">        map.forEach((key, value) -&gt; environment.props.setProperty(key, value));</span>
+<span class="fc" id="L90">        return environment;</span>
+    }
+
+    /**
+     * Load environment by URL
+     *
+     * @param url file url
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">    public static Environment of(@NonNull URL url) {</span>
+        try {
+<span class="fc" id="L101">            return of(url.openStream());</span>
+<span class="nc" id="L102">        } catch (UnsupportedEncodingException e) {</span>
+<span class="fc" id="L103">        } catch (IOException e) {</span>
+<span class="fc" id="L104">            throw new IllegalStateException(e);</span>
+<span class="nc" id="L105">        }</span>
+<span class="nc" id="L106">        return null;</span>
+    }
+
+    /**
+     * Load environment by file
+     *
+     * @param file environment file
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">    public static Environment of(@NonNull File file) {</span>
+        try {
+<span class="fc" id="L117">            return of(Files.newInputStream(Paths.get(file.getPath())));</span>
+<span class="fc" id="L118">        } catch (IOException e) {</span>
+<span class="fc" id="L119">            throw new IllegalStateException(e);</span>
+        }
+    }
+
+    /**
+     * Load environment by location
+     *
+     * @param location environment location
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">    public static Environment of(@NonNull String location) {</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">        if (location.startsWith(PREFIX_CLASSPATH)) {</span>
+<span class="fc" id="L131">            location = location.substring(PREFIX_CLASSPATH.length());</span>
+<span class="fc" id="L132">            return loadClasspath(location);</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        } else if (location.startsWith(PREFIX_FILE)) {</span>
+<span class="fc" id="L134">            location = location.substring(PREFIX_FILE.length());</span>
+<span class="fc" id="L135">            return of(new File(location));</span>
+<span class="fc bfc" id="L136" title="All 2 branches covered.">        } else if (location.startsWith(PREFIX_URL)) {</span>
+<span class="fc" id="L137">            location = location.substring(PREFIX_URL.length());</span>
+            try {
+<span class="nc" id="L139">                return of(new URL(location));</span>
+<span class="nc" id="L140">            } catch (MalformedURLException e) {</span>
+<span class="nc" id="L141">                log.error(&quot;&quot;, e);</span>
+<span class="nc" id="L142">                return null;</span>
+            }
+        } else {
+<span class="fc" id="L145">            return loadClasspath(location);</span>
+        }
+    }
+
+    /**
+     * Load classpath file to Environment
+     *
+     * @param classpath classpath url
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">    private static Environment loadClasspath(@NonNull String classpath) {</span>
+<span class="fc" id="L156">        var path = classpath;</span>
+<span class="fc bfc" id="L157" title="All 2 branches covered.">        if (classpath.startsWith(NettyHttpConst.SLASH)) {</span>
+<span class="fc" id="L158">            path = classpath.substring(1);</span>
+        }
+<span class="fc" id="L160">        InputStream is = getDefault().getResourceAsStream(path);</span>
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">        if (null == is) {</span>
+<span class="nc" id="L162">            return EMPTY_ENV;</span>
+        }
+<span class="fc" id="L164">        return of(is);</span>
+    }
+
+    /**
+     * Load InputStream to Environment
+     *
+     * @param is InputStream instance
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">    private static Environment of(@NonNull InputStream is) {</span>
+        try {
+<span class="fc" id="L175">            var environment = new Environment();</span>
+<span class="fc" id="L176">            environment.props.load(new InputStreamReader(is, StandardCharsets.UTF_8));</span>
+<span class="fc" id="L177">            return environment;</span>
+<span class="nc" id="L178">        } catch (IOException e) {</span>
+<span class="nc" id="L179">            throw new IllegalStateException(e);</span>
+        } finally {
+<span class="fc" id="L181">            IOKit.closeQuietly(is);</span>
+        }
+    }
+
+    /**
+     * Get current thread context ClassLoader
+     *
+     * @return return ClassLoader
+     */
+    public static ClassLoader getDefault() {
+<span class="fc" id="L191">        ClassLoader loader = null;</span>
+        try {
+<span class="fc" id="L193">            loader = Thread.currentThread().getContextClassLoader();</span>
+<span class="nc" id="L194">        } catch (Exception ignored) {</span>
+<span class="fc" id="L195">        }</span>
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">        if (loader == null) {</span>
+<span class="nc" id="L197">            loader = Environment.class.getClassLoader();</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">            if (loader == null) {</span>
+                try {
+                    // getClassLoader() returning null indicates the bootstrap ClassLoader
+<span class="nc" id="L201">                    loader = ClassLoader.getSystemClassLoader();</span>
+<span class="nc" id="L202">                } catch (Exception e) {</span>
+                    // Cannot access system ClassLoader - oh well, maybe the caller can live with null...
+<span class="nc" id="L204">                }</span>
+            }
+        }
+<span class="fc" id="L207">        return loader;</span>
+    }
+
+    /**
+     * Set a value to props
+     *
+     * @param key   key
+     * @param value value
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L217" title="2 of 4 branches missed.">    public Environment set(@NonNull String key, @NonNull Object value) {</span>
+<span class="fc" id="L218">        props.remove(key);</span>
+<span class="fc" id="L219">        props.put(key, value.toString());</span>
+<span class="fc" id="L220">        return this;</span>
+    }
+
+    /**
+     * And Set the same
+     *
+     * @param key   key
+     * @param value value
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L230" title="2 of 4 branches missed.">    public Environment add(@NonNull String key, @NonNull Object value) {</span>
+<span class="fc" id="L231">        return set(key, value);</span>
+    }
+
+    /**
+     * Add a map to props
+     *
+     * @param map map config instance
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">    public Environment addAll(@NonNull Map&lt;String, String&gt; map) {</span>
+<span class="fc" id="L241">        map.forEach((key, value) -&gt; this.props.setProperty(key, value));</span>
+<span class="fc" id="L242">        return this;</span>
+    }
+
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">    public Environment addAll(@NonNull Properties props) {</span>
+<span class="fc" id="L246">        props.forEach((key, value) -&gt; this.props.setProperty(key.toString(), value.toString()));</span>
+<span class="fc" id="L247">        return this;</span>
+    }
+
+    /**
+     * Properties to Environment
+     *
+     * @param environment environment instance
+     * @return return Environment instance
+     */
+<span class="pc bpc" id="L256" title="1 of 2 branches missed.">    public Environment load(@NonNull Environment environment) {</span>
+<span class="fc" id="L257">        this.props.putAll(environment.toMap());</span>
+<span class="fc" id="L258">        return this;</span>
+    }
+
+    public Optional&lt;String&gt; get(String key) {
+<span class="pc bpc" id="L262" title="1 of 2 branches missed.">        if (null == key) return Optional.empty();</span>
+<span class="fc" id="L263">        return ofNullable(props.getProperty(key));</span>
+    }
+
+    public String getOrNull(String key) {
+<span class="fc" id="L267">        return get(key).orElse(null);</span>
+    }
+
+    public String get(String key, String defaultValue) {
+<span class="fc" id="L271">        return get(key).orElse(defaultValue);</span>
+    }
+
+    public Optional&lt;Object&gt; getObject(String key) {
+<span class="fc" id="L275">        return ofNullable(props.get(key));</span>
+    }
+
+    public Optional&lt;Integer&gt; getInt(String key) {
+<span class="pc bpc" id="L279" title="1 of 4 branches missed.">        if (null != key &amp;&amp; getObject(key).isPresent()) {</span>
+<span class="fc" id="L280">            return Optional.of(Integer.parseInt(getObject(key).get().toString()));</span>
+        }
+<span class="fc" id="L282">        return Optional.empty();</span>
+    }
+
+    public Integer getIntOrNull(String key) {
+<span class="fc" id="L286">        var intVal = getInt(key);</span>
+<span class="fc" id="L287">        return intVal.orElse(null);</span>
+    }
+
+    public Integer getInt(String key, int defaultValue) {
+<span class="fc bfc" id="L291" title="All 2 branches covered.">        if (getInt(key).isPresent()) {</span>
+<span class="fc" id="L292">            return getInt(key).get();</span>
+        }
+<span class="fc" id="L294">        return defaultValue;</span>
+    }
+
+    public Optional&lt;Long&gt; getLong(String key) {
+<span class="pc bpc" id="L298" title="1 of 4 branches missed.">        if (null != key &amp;&amp; getObject(key).isPresent()) {</span>
+<span class="fc" id="L299">            return Optional.of(Long.parseLong(getObject(key).get().toString()));</span>
+        }
+<span class="fc" id="L301">        return Optional.empty();</span>
+    }
+
+    public Long getLongOrNull(String key) {
+<span class="fc" id="L305">        var longVal = getLong(key);</span>
+<span class="fc" id="L306">        return longVal.orElse(null);</span>
+    }
+
+    public Long getLong(String key, long defaultValue) {
+<span class="fc" id="L310">        return getLong(key).orElse(defaultValue);</span>
+    }
+
+    public Optional&lt;Boolean&gt; getBoolean(String key) {
+<span class="pc bpc" id="L314" title="1 of 4 branches missed.">        if (null != key &amp;&amp; getObject(key).isPresent()) {</span>
+<span class="fc" id="L315">            return Optional.of(Boolean.parseBoolean(getObject(key).get().toString()));</span>
+        }
+<span class="fc" id="L317">        return Optional.empty();</span>
+    }
+
+    public Boolean getBooleanOrNull(String key) {
+<span class="fc" id="L321">        var boolVal = getBoolean(key);</span>
+<span class="fc" id="L322">        return boolVal.orElse(null);</span>
+    }
+
+    public Boolean getBoolean(String key, boolean defaultValue) {
+<span class="fc" id="L326">        return getBoolean(key).orElse(defaultValue);</span>
+    }
+
+    public Optional&lt;Double&gt; getDouble(String key) {
+<span class="pc bpc" id="L330" title="1 of 4 branches missed.">        if (null != key &amp;&amp; getObject(key).isPresent()) {</span>
+<span class="fc" id="L331">            return Optional.of(Double.parseDouble(getObject(key).get().toString()));</span>
+        }
+<span class="fc" id="L333">        return Optional.empty();</span>
+    }
+
+    public Double getDoubleOrNull(String key) {
+<span class="fc" id="L337">        var doubleVal = getDouble(key);</span>
+<span class="fc" id="L338">        return doubleVal.orElse(null);</span>
+    }
+
+    public Double getDouble(String key, double defaultValue) {
+<span class="nc" id="L342">        return getDouble(key).orElse(defaultValue);</span>
+    }
+
+    public Optional&lt;Date&gt; getDate(String key) {
+<span class="pc bpc" id="L346" title="1 of 4 branches missed.">        if (null != key &amp;&amp; getObject(key).isPresent()) {</span>
+<span class="fc" id="L347">            String value = getObject(key).get().toString();</span>
+<span class="fc" id="L348">            Date   date  = (Date) ReflectKit.convert(Date.class, value);</span>
+<span class="fc" id="L349">            return Optional.ofNullable(date);</span>
+        }
+<span class="fc" id="L351">        return Optional.empty();</span>
+    }
+
+    public Date getDateOrNull(String key) {
+<span class="fc" id="L355">        var dateVal = getDate(key);</span>
+<span class="fc" id="L356">        return dateVal.orElse(null);</span>
+    }
+
+    public Map&lt;String, Object&gt; getPrefix(String key) {
+<span class="fc" id="L360">        var map = new HashMap&lt;String, Object&gt;();</span>
+<span class="pc bpc" id="L361" title="1 of 2 branches missed.">        if (null != key) {</span>
+<span class="fc" id="L362">            props.forEach((key_, value) -&gt; {</span>
+<span class="fc bfc" id="L363" title="All 2 branches covered.">                if (key_.toString().startsWith(key)) {</span>
+<span class="fc" id="L364">                    map.put(key_.toString().substring(key.length() + 1), value);</span>
+                }
+<span class="fc" id="L366">            });</span>
+        }
+<span class="fc" id="L368">        return map;</span>
+    }
+
+    public Map&lt;String, String&gt; toMap() {
+<span class="fc" id="L372">        var map = new HashMap&lt;String, String&gt;(props.size());</span>
+<span class="fc" id="L373">        props.forEach((k, v) -&gt; map.put(k.toString(), v.toString()));</span>
+<span class="fc" id="L374">        return map;</span>
+    }
+
+    public boolean hasKey(String key) {
+<span class="fc bfc" id="L378" title="All 2 branches covered.">        if (null == key) {</span>
+<span class="fc" id="L379">            return false;</span>
+        }
+<span class="fc" id="L381">        return props.containsKey(key);</span>
+    }
+
+    public boolean hasValue(String value) {
+<span class="fc" id="L385">        return props.containsValue(value);</span>
+    }
+
+    public Properties props() {
+<span class="fc" id="L389">        return props;</span>
+    }
+
+    public int size() {
+<span class="fc" id="L393">        return props.size();</span>
+    }
+
+    public boolean isEmpty() {
+<span class="fc" id="L397">        return props.isEmpty();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

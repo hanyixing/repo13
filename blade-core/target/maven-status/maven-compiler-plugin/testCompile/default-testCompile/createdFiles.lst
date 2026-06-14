@@ -1,0 +1,8 @@
+com\hellokaton\blade\validator\ValidatorsEnhancedTest.class
+com\hellokaton\blade\ioc\SimpleIocTest$SampleServiceImpl.class
+com\hellokaton\blade\mvc\route\RouteMatcherTest$DemoController.class
+com\hellokaton\blade\ioc\SimpleIocTest$SampleService.class
+com\hellokaton\blade\ioc\SimpleIocTest.class
+com\hellokaton\blade\server\HttpServerHandlerTest.class
+com\hellokaton\blade\ioc\SimpleIocTest$SampleInterface.class
+com\hellokaton\blade\server\StaticFileHandlerTest.class

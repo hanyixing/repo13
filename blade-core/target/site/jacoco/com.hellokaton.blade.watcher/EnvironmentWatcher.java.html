@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EnvironmentWatcher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.watcher</a> &gt; <span class="el_source">EnvironmentWatcher.java</span></div><h1>EnvironmentWatcher.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.watcher;
+
+import com.hellokaton.blade.Environment;
+import com.hellokaton.blade.event.Event;
+import com.hellokaton.blade.event.EventType;
+import com.hellokaton.blade.mvc.BladeConst;
+import com.hellokaton.blade.mvc.WebContext;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+import java.nio.file.*;
+
+/**
+ * Environment watcher
+ *
+ * @author biezhi
+ * @date 2017/12/24
+ */
+<span class="fc" id="L19">@Slf4j</span>
+<span class="fc" id="L20">public class EnvironmentWatcher implements Runnable {</span>
+
+    @Override
+    public void run() {
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">        if (BladeConst.CLASSPATH.endsWith(&quot;.jar&quot;)) {</span>
+<span class="nc" id="L25">            return;</span>
+        }
+
+<span class="fc" id="L28">        final Path path = Paths.get(BladeConst.CLASSPATH);</span>
+<span class="fc" id="L29">        try (WatchService watchService = FileSystems.getDefault().newWatchService()) {</span>
+
+<span class="fc" id="L31">            path.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);</span>
+
+            // start an infinite loop
+            while (true) {
+<span class="nc" id="L35">                final WatchKey key = watchService.take();</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">                for (WatchEvent&lt;?&gt; watchEvent : key.pollEvents()) {</span>
+<span class="nc" id="L37">                    final WatchEvent.Kind&lt;?&gt; kind = watchEvent.kind();</span>
+<span class="nc bnc" id="L38" title="All 2 branches missed.">                    if (kind == StandardWatchEventKinds.OVERFLOW) {</span>
+<span class="nc" id="L39">                        continue;</span>
+                    }
+                    // get the filename for the event
+<span class="nc" id="L42">                    final WatchEvent&lt;Path&gt; watchEventPath = (WatchEvent&lt;Path&gt;) watchEvent;</span>
+<span class="nc" id="L43">                    final String           filename       = watchEventPath.context().toString();</span>
+                    // print it out
+<span class="nc bnc" id="L45" title="All 2 branches missed.">                    if (log.isDebugEnabled()) {</span>
+<span class="nc" id="L46">                        log.debug(&quot;⬢ {} -&gt; {}&quot;, kind, filename);</span>
+                    }
+<span class="nc bnc" id="L48" title="All 2 branches missed.">                    if (kind == StandardWatchEventKinds.ENTRY_DELETE &amp;&amp;</span>
+<span class="nc bnc" id="L49" title="All 4 branches missed.">                            filename.startsWith(&quot;.app&quot;) &amp;&amp; filename.endsWith(&quot;.properties.swp&quot;)) {</span>
+                        // reload env
+<span class="nc" id="L51">                        log.info(&quot;⬢ Reload environment&quot;);</span>
+
+<span class="nc" id="L53">                        Environment environment = Environment.of(&quot;classpath:&quot; + filename.substring(1, filename.length() - 4));</span>
+<span class="nc" id="L54">                        WebContext.blade().environment(environment);</span>
+                        // notify
+<span class="nc" id="L56">                        WebContext.blade().eventManager().fireEvent(EventType.ENVIRONMENT_CHANGED, new Event().attribute(&quot;environment&quot;, environment));</span>
+                    }
+<span class="nc" id="L58">                }</span>
+                // reset the keyf
+<span class="nc" id="L60">                boolean valid = key.reset();</span>
+                // exit loop if the key is not valid (if the directory was
+                // deleted, for
+<span class="nc bnc" id="L63" title="All 2 branches missed.">                if (!valid) {</span>
+<span class="nc" id="L64">                    break;</span>
+                }
+<span class="nc" id="L66">            }</span>
+<span class="fc" id="L67">        } catch (IOException | InterruptedException ex) {</span>
+<span class="fc" id="L68">            log.error(&quot;Environment watch error&quot;, ex);</span>
+<span class="nc" id="L69">        }</span>
+<span class="fc" id="L70">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

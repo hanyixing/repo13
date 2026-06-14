@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NettyServer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.server</a> &gt; <span class="el_source">NettyServer.java</span></div><h1>NettyServer.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.server;
+
+import com.hellokaton.blade.Blade;
+import com.hellokaton.blade.Environment;
+import com.hellokaton.blade.annotation.Path;
+import com.hellokaton.blade.annotation.URLPattern;
+import com.hellokaton.blade.event.Event;
+import com.hellokaton.blade.event.EventType;
+import com.hellokaton.blade.ioc.DynamicContext;
+import com.hellokaton.blade.ioc.Ioc;
+import com.hellokaton.blade.ioc.annotation.Bean;
+import com.hellokaton.blade.ioc.annotation.Configuration;
+import com.hellokaton.blade.ioc.annotation.Value;
+import com.hellokaton.blade.ioc.bean.BeanDefine;
+import com.hellokaton.blade.ioc.bean.ClassInfo;
+import com.hellokaton.blade.ioc.bean.OrderComparator;
+import com.hellokaton.blade.kit.*;
+import com.hellokaton.blade.loader.BladeLoader;
+import com.hellokaton.blade.mvc.BladeConst;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.handler.DefaultExceptionHandler;
+import com.hellokaton.blade.mvc.handler.ExceptionHandler;
+import com.hellokaton.blade.mvc.hook.WebHook;
+import com.hellokaton.blade.mvc.http.session.SessionCleaner;
+import com.hellokaton.blade.mvc.route.RouteBuilder;
+import com.hellokaton.blade.mvc.route.RouteMatcher;
+import com.hellokaton.blade.mvc.ui.template.DefaultEngine;
+import com.hellokaton.blade.task.Task;
+import com.hellokaton.blade.task.TaskContext;
+import com.hellokaton.blade.task.TaskManager;
+import com.hellokaton.blade.task.TaskStruct;
+import com.hellokaton.blade.task.annotation.Schedule;
+import com.hellokaton.blade.task.cron.CronExecutorService;
+import com.hellokaton.blade.task.cron.CronExpression;
+import com.hellokaton.blade.task.cron.CronThreadPoolExecutor;
+import com.hellokaton.blade.watcher.EnvironmentWatcher;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.*;
+import io.netty.channel.epoll.EpollChannelOption;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.util.ResourceLeakDetector;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+
+import java.io.File;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
+
+import static com.hellokaton.blade.kit.BladeKit.getPrefixSymbol;
+import static com.hellokaton.blade.kit.BladeKit.getStartedSymbol;
+import static com.hellokaton.blade.mvc.BladeConst.*;
+
+/**
+ * Netty Web Server
+ *
+ * @author biezhi
+ * 2017/5/31
+ */
+<span class="fc" id="L84">@Slf4j</span>
+<span class="fc" id="L85">public class NettyServer implements Server {</span>
+
+    private Blade blade;
+    private Environment environment;
+    private EventLoopGroup bossGroup;
+    private EventLoop scheduleEventLoop;
+    private EventLoopGroup workerGroup;
+    private Channel channel;
+    private RouteBuilder routeBuilder;
+    private List&lt;BladeLoader&gt; loaders;
+<span class="fc" id="L95">    private final List&lt;TaskStruct&gt; taskStruts = new ArrayList&lt;&gt;();</span>
+
+    // netty default config
+    private static final int DEFAULT_ACCEPT_THREAD_COUNT = 1;
+    private static final int DEFAULT_IO_THREAD_COUNT = 0;
+
+    private volatile boolean stopped;
+
+    @Override
+    public void start(Blade blade) throws Exception {
+<span class="fc" id="L105">        this.blade = blade;</span>
+<span class="fc" id="L106">        this.environment = blade.environment();</span>
+<span class="fc" id="L107">        this.loaders = blade.loaders();</span>
+
+<span class="fc" id="L109">        long startMs = System.currentTimeMillis();</span>
+
+<span class="fc" id="L111">        int padSize = 16;</span>
+<span class="fc" id="L112">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;app.env&quot;, padSize), getPrefixSymbol(), environment.get(ENV_KEY_APP_ENV, &quot;default&quot;));</span>
+<span class="fc" id="L113">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;app.pid&quot;, padSize), getPrefixSymbol(), BladeKit.getPID());</span>
+<span class="fc" id="L114">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;app.devMode&quot;, padSize), getPrefixSymbol(), blade.devMode());</span>
+
+<span class="fc" id="L116">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;jdk.version&quot;, padSize), getPrefixSymbol(), System.getProperty(&quot;java.version&quot;));</span>
+<span class="fc" id="L117">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;user.dir&quot;, padSize), getPrefixSymbol(), System.getProperty(&quot;user.dir&quot;));</span>
+<span class="fc" id="L118">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;java.io.tmpdir&quot;, padSize), getPrefixSymbol(), System.getProperty(&quot;java.io.tmpdir&quot;));</span>
+<span class="fc" id="L119">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;user.timezone&quot;, padSize), getPrefixSymbol(), System.getProperty(&quot;user.timezone&quot;));</span>
+<span class="fc" id="L120">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;file.encoding&quot;, padSize), getPrefixSymbol(), System.getProperty(&quot;file.encoding&quot;));</span>
+<span class="fc" id="L121">        log.info(&quot;{} {}{}&quot;, StringKit.padRight(&quot;app.classpath&quot;, padSize), getPrefixSymbol(), CLASSPATH);</span>
+
+<span class="fc" id="L123">        this.initConfig();</span>
+
+<span class="fc" id="L125">        String contextPath = environment.get(ENV_KEY_CONTEXT_PATH, &quot;/&quot;);</span>
+<span class="fc" id="L126">        WebContext.init(blade, contextPath);</span>
+
+<span class="fc" id="L128">        this.initIoc();</span>
+<span class="fc" id="L129">        this.watchEnv();</span>
+<span class="fc" id="L130">        this.startServer(startMs);</span>
+<span class="fc" id="L131">        this.sessionCleaner();</span>
+<span class="fc" id="L132">        this.startTask();</span>
+<span class="fc" id="L133">        this.shutdownHook();</span>
+<span class="fc" id="L134">    }</span>
+
+    private void sessionCleaner() {
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">        if (null != blade.sessionManager()) {</span>
+<span class="fc" id="L138">            scheduleEventLoop.</span>
+<span class="fc" id="L139">                    scheduleWithFixedDelay(new SessionCleaner(blade.sessionManager()),</span>
+                            1000, 1000, TimeUnit.MILLISECONDS);
+        }
+<span class="fc" id="L142">    }</span>
+
+    private void initIoc() {
+<span class="fc" id="L145">        RouteMatcher routeMatcher = blade.routeMatcher();</span>
+
+<span class="fc" id="L147">        routeBuilder = new RouteBuilder(routeMatcher);</span>
+
+<span class="fc" id="L149">        blade.scanPackages().stream()</span>
+<span class="fc" id="L150">                .flatMap(DynamicContext::recursionFindClasses)</span>
+<span class="fc" id="L151">                .map(ClassInfo::getClazz)</span>
+<span class="fc" id="L152">                .filter(ReflectKit::isNormalClass)</span>
+<span class="fc" id="L153">                .forEach(this::parseAndCreate);</span>
+
+<span class="fc" id="L155">        routeMatcher.register();</span>
+
+<span class="pc" id="L157">        this.loaders.stream().sorted(new OrderComparator&lt;&gt;()).forEach(b -&gt; b.preLoad(blade));</span>
+
+<span class="fc" id="L159">        Ioc ioc = blade.ioc();</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">        if (BladeKit.isNotEmpty(ioc.getBeans())) {</span>
+<span class="fc" id="L161">            log.info(&quot;{}Register bean: {}&quot;, getStartedSymbol(), ioc.getBeans());</span>
+        }
+
+<span class="fc" id="L164">        List&lt;BeanDefine&gt; beanDefines = ioc.getBeanDefines();</span>
+
+<span class="fc bfc" id="L166" title="All 2 branches covered.">        if (BladeKit.isNotEmpty(beanDefines)) {</span>
+<span class="fc" id="L167">            beanDefines.forEach(b -&gt; {</span>
+<span class="fc" id="L168">                IocKit.initInjection(ioc, b);</span>
+<span class="fc" id="L169">                IocKit.injectionValue(environment, b);</span>
+<span class="fc" id="L170">                List&lt;TaskStruct&gt; cronExpressions = BladeKit.getTasks(b.getType(), environment);</span>
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">                if (null != cronExpressions) {</span>
+<span class="fc" id="L172">                    taskStruts.addAll(cronExpressions);</span>
+                }
+<span class="fc" id="L174">            });</span>
+        }
+<span class="pc" id="L176">        this.loaders.stream().sorted(new OrderComparator&lt;&gt;()).forEach(b -&gt; b.load(blade));</span>
+<span class="fc" id="L177">    }</span>
+
+    private void startServer(long startMs) throws Exception {
+
+<span class="fc" id="L181">        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);</span>
+
+<span class="fc" id="L183">        boolean SSL = environment.getBoolean(ENV_KEY_SSL, false);</span>
+        // Configure SSL.
+<span class="fc" id="L185">        SslContext sslCtx = null;</span>
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">        if (SSL) {</span>
+<span class="nc" id="L187">            String certFilePath = environment.get(ENV_KEY_SSL_CERT, null);</span>
+<span class="nc" id="L188">            String privateKeyPath = environment.get(ENV_KEY_SSL_PRIVATE_KEY, null);</span>
+<span class="nc" id="L189">            String privateKeyPassword = environment.get(ENV_KEY_SSL_PRIVATE_KEY_PASS, null);</span>
+
+<span class="nc" id="L191">            log.info(&quot;{}SSL CertChainFile  Path: {}&quot;, getStartedSymbol(), certFilePath);</span>
+<span class="nc" id="L192">            log.info(&quot;{}SSL PrivateKeyFile Path: {}&quot;, getStartedSymbol(), privateKeyPath);</span>
+<span class="nc" id="L193">            sslCtx = SslContextBuilder.forServer(new File(certFilePath), new File(privateKeyPath), privateKeyPassword).build();</span>
+        }
+
+<span class="fc" id="L196">        var bootstrap = new ServerBootstrap();</span>
+
+<span class="fc" id="L198">        int acceptThreadCount = environment.getInt(ENV_KEY_NETTY_ACCEPT_THREAD_COUNT, DEFAULT_ACCEPT_THREAD_COUNT);</span>
+<span class="fc" id="L199">        int ioThreadCount = environment.getInt(ENV_KEY_NETTY_IO_THREAD_COUNT, DEFAULT_IO_THREAD_COUNT);</span>
+
+        // enable epoll
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">        if (BladeKit.epollIsAvailable()) {</span>
+<span class="nc" id="L203">            log.info(&quot;{}Use EpollEventLoopGroup&quot;, getStartedSymbol());</span>
+<span class="nc" id="L204">            bootstrap.option(EpollChannelOption.SO_REUSEPORT, true);</span>
+
+<span class="nc" id="L206">            NettyServerGroup nettyServerGroup = EpollKit.group(acceptThreadCount, ioThreadCount);</span>
+<span class="nc" id="L207">            this.bossGroup = nettyServerGroup.getBoosGroup();</span>
+<span class="nc" id="L208">            this.workerGroup = nettyServerGroup.getWorkerGroup();</span>
+<span class="nc" id="L209">            bootstrap.group(bossGroup, workerGroup).channel(nettyServerGroup.getSocketChannel());</span>
+<span class="nc" id="L210">        } else {</span>
+<span class="fc" id="L211">            log.info(&quot;{}Use NioEventLoopGroup&quot;, getStartedSymbol());</span>
+
+<span class="fc" id="L213">            this.bossGroup = new NioEventLoopGroup(acceptThreadCount, new NamedThreadFactory(&quot;boss@&quot;));</span>
+<span class="fc" id="L214">            this.workerGroup = new NioEventLoopGroup(ioThreadCount, new NamedThreadFactory(&quot;worker@&quot;));</span>
+<span class="fc" id="L215">            bootstrap.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class);</span>
+        }
+
+<span class="fc" id="L218">        scheduleEventLoop = new DefaultEventLoop();</span>
+
+<span class="fc" id="L220">        Boolean tcpNodeLay = environment.getBoolean(ENV_KEY_NETTY_TCP_NODELAY, true);</span>
+<span class="fc" id="L221">        bootstrap.childOption(ChannelOption.TCP_NODELAY, tcpNodeLay);</span>
+
+<span class="fc" id="L223">        Boolean soKeepAlive = environment.getBoolean(ENV_KEY_NETTY_SO_KEEPALIVE, true);</span>
+<span class="fc" id="L224">        bootstrap.childOption(ChannelOption.SO_KEEPALIVE, soKeepAlive);</span>
+
+<span class="fc" id="L226">        environment.getInt(ENV_KEY_NETTY_SO_BACKLOG).ifPresent(backLog -&gt; {</span>
+<span class="nc" id="L227">            bootstrap.option(ChannelOption.SO_BACKLOG, backLog);</span>
+<span class="nc" id="L228">        });</span>
+
+<span class="fc" id="L230">        bootstrap.childHandler(new HttpServerInitializer(sslCtx, blade, scheduleEventLoop));</span>
+
+<span class="fc" id="L232">        String address = environment.get(ENV_KEY_SERVER_ADDRESS, DEFAULT_SERVER_ADDRESS);</span>
+<span class="fc" id="L233">        Integer port = environment.getInt(ENV_KEY_SERVER_PORT, DEFAULT_SERVER_PORT);</span>
+
+<span class="fc" id="L235">        channel = bootstrap.bind(address, port).sync().channel();</span>
+
+<span class="fc" id="L237">        String appName = environment.get(ENV_KEY_APP_NAME, &quot;Blade&quot;);</span>
+<span class="fc" id="L238">        String url = Ansi.BgRed.and(Ansi.Black).format(&quot; %s:%d &quot;, address, port);</span>
+<span class="pc bpc" id="L239" title="1 of 2 branches missed.">        String protocol = SSL ? &quot;https&quot; : &quot;http&quot;;</span>
+
+<span class="fc" id="L241">        log.info(&quot;{}{} initialize successfully, Time elapsed: {} ms&quot;, getStartedSymbol(), appName, (System.currentTimeMillis() - startMs));</span>
+<span class="fc" id="L242">        log.info(&quot;{}Blade start with {}&quot;, getStartedSymbol(), url);</span>
+<span class="fc" id="L243">        log.info(&quot;{}Open browser access {}://{}:{} ⚡\r\n&quot;, getStartedSymbol(), protocol, address.replace(DEFAULT_SERVER_ADDRESS, LOCAL_IP_ADDRESS), port);</span>
+
+<span class="fc" id="L245">        blade.eventManager().fireEvent(EventType.SERVER_STARTED, new Event().attribute(&quot;blade&quot;, blade));</span>
+<span class="fc" id="L246">    }</span>
+
+    private void startTask() {
+<span class="pc bpc" id="L249" title="1 of 2 branches missed.">        if (taskStruts.isEmpty()) {</span>
+<span class="fc" id="L250">            return;</span>
+        }
+
+<span class="nc" id="L253">        int corePoolSize = environment.getInt(ENV_KEY_TASK_THREAD_COUNT, Runtime.getRuntime().availableProcessors() + 1);</span>
+
+<span class="nc" id="L255">        CronExecutorService executorService = TaskManager.getExecutorService();</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        if (null == executorService) {</span>
+<span class="nc" id="L257">            executorService = new CronThreadPoolExecutor(corePoolSize, new NamedThreadFactory(&quot;task@&quot;));</span>
+<span class="nc" id="L258">            TaskManager.init(executorService);</span>
+        }
+
+<span class="nc" id="L261">        var jobCount = new AtomicInteger();</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">        for (var taskStrut : taskStruts) {</span>
+<span class="nc" id="L263">            addTask(executorService, jobCount, taskStrut);</span>
+<span class="nc" id="L264">        }</span>
+<span class="nc" id="L265">    }</span>
+
+    private void addTask(CronExecutorService executorService, AtomicInteger jobCount, TaskStruct taskStruct) {
+        try {
+<span class="nc" id="L269">            Schedule schedule = taskStruct.getSchedule();</span>
+<span class="nc" id="L270">            String cron = taskStruct.getCron();</span>
+<span class="nc bnc" id="L271" title="All 2 branches missed.">            String jobName = StringKit.isBlank(schedule.name()) ? &quot;task-&quot; + jobCount.getAndIncrement() : schedule.name();</span>
+<span class="nc" id="L272">            Task task = new Task(jobName, new CronExpression(cron), schedule.delay());</span>
+<span class="nc" id="L273">            TaskContext taskContext = new TaskContext(task);</span>
+
+<span class="nc" id="L275">            task.setTask(() -&gt; {</span>
+<span class="nc" id="L276">                Object target = blade.ioc().getBean(taskStruct.getType());</span>
+<span class="nc" id="L277">                Method method = taskStruct.getMethod();</span>
+                try {
+<span class="nc bnc" id="L279" title="All 4 branches missed.">                    if (method.getParameterCount() == 1 &amp;&amp; method.getParameterTypes()[0].equals(TaskContext.class)) {</span>
+<span class="nc" id="L280">                        taskStruct.getMethod().invoke(target, taskContext);</span>
+                    } else {
+<span class="nc" id="L282">                        taskStruct.getMethod().invoke(target);</span>
+                    }
+<span class="nc" id="L284">                } catch (Exception e) {</span>
+<span class="nc" id="L285">                    log.error(&quot;Task method error&quot;, e);</span>
+<span class="nc" id="L286">                }</span>
+<span class="nc" id="L287">            });</span>
+
+<span class="nc" id="L289">            ScheduledFuture&lt;?&gt; future = executorService.submit(task);</span>
+<span class="nc" id="L290">            task.setFuture(future);</span>
+<span class="nc" id="L291">            TaskManager.addTask(task);</span>
+<span class="nc" id="L292">        } catch (Exception e) {</span>
+<span class="nc" id="L293">            log.warn(&quot;{}Add task fail: {}&quot;, getPrefixSymbol(), e.getMessage());</span>
+<span class="nc" id="L294">        }</span>
+<span class="nc" id="L295">    }</span>
+
+    private void parseAndCreate(Class&lt;?&gt; clazz) {
+<span class="fc bfc" id="L298" title="All 4 branches covered.">        if (null != clazz.getAnnotation(Bean.class) || null != clazz.getAnnotation(Value.class)) {</span>
+<span class="fc" id="L299">            blade.register(clazz);</span>
+        }
+<span class="fc bfc" id="L301" title="All 2 branches covered.">        if (null != clazz.getAnnotation(Path.class)) {</span>
+<span class="pc bpc" id="L302" title="1 of 2 branches missed.">            if (null == blade.getBean(clazz)) {</span>
+<span class="fc" id="L303">                blade.register(clazz);</span>
+            }
+<span class="fc" id="L305">            Object controller = blade.getBean(clazz);</span>
+<span class="fc" id="L306">            routeBuilder.addRouter(clazz, controller);</span>
+        }
+<span class="pc bpc" id="L308" title="3 of 4 branches missed.">        if (null != clazz.getAnnotation(Configuration.class) &amp;&amp; clazz.getMethods().length &gt; 0) {</span>
+<span class="nc" id="L309">            Object config = ReflectKit.newInstance(clazz);</span>
+<span class="nc" id="L310">            Arrays.stream(clazz.getMethods())</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">                    .filter(m -&gt; m.getAnnotation(Bean.class) != null)</span>
+<span class="nc" id="L312">                    .forEach(n -&gt; {</span>
+                        try {
+<span class="nc" id="L314">                            blade.register(n.invoke(config));</span>
+<span class="nc" id="L315">                        } catch (Exception e) {</span>
+<span class="nc" id="L316">                            e.printStackTrace();</span>
+<span class="nc" id="L317">                        }</span>
+<span class="nc" id="L318">                    });</span>
+        }
+<span class="pc bpc" id="L320" title="3 of 4 branches missed.">        if (ReflectKit.hasInterface(clazz, WebHook.class) &amp;&amp; null != clazz.getAnnotation(Bean.class)) {</span>
+<span class="nc" id="L321">            URLPattern URLPattern = clazz.getAnnotation(URLPattern.class);</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">            if (null == URLPattern) {</span>
+<span class="nc" id="L323">                routeBuilder.addWebHook(clazz, &quot;/.*&quot;);</span>
+            } else {
+<span class="nc" id="L325">                Stream.of(URLPattern.values())</span>
+<span class="nc" id="L326">                        .forEach(pattern -&gt; routeBuilder.addWebHook(clazz, pattern));</span>
+            }
+        }
+
+<span class="pc bpc" id="L330" title="3 of 4 branches missed.">        if (ReflectKit.hasInterface(clazz, BladeLoader.class) &amp;&amp; null != clazz.getAnnotation(Bean.class)) {</span>
+<span class="nc" id="L331">            this.loaders.add((BladeLoader) blade.getBean(clazz));</span>
+        }
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">        if (isExceptionHandler(clazz)) {</span>
+<span class="nc" id="L334">            ExceptionHandler exceptionHandler = (ExceptionHandler) blade.getBean(clazz);</span>
+<span class="nc" id="L335">            blade.exceptionHandler(exceptionHandler);</span>
+        }
+<span class="fc" id="L337">    }</span>
+
+    private boolean isExceptionHandler(Class&lt;?&gt; clazz) {
+<span class="fc bfc" id="L340" title="All 2 branches covered.">        return (null != clazz.getAnnotation(Bean.class) &amp;&amp; (</span>
+<span class="pc bpc" id="L341" title="2 of 4 branches missed.">                ReflectKit.hasInterface(clazz, ExceptionHandler.class) || clazz.getSuperclass().equals(DefaultExceptionHandler.class)));</span>
+    }
+
+    private void watchEnv() {
+<span class="fc" id="L345">        boolean watchEnv = environment.getBoolean(ENV_KEY_APP_WATCH_ENV, false);</span>
+
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">        if (watchEnv) {</span>
+<span class="nc" id="L348">            log.info(&quot;{}Watched environment started&quot;, getStartedSymbol());</span>
+<span class="nc" id="L349">            var thread = new Thread(new EnvironmentWatcher());</span>
+<span class="nc" id="L350">            thread.setName(&quot;watch@thread&quot;);</span>
+<span class="nc" id="L351">            thread.start();</span>
+        }
+<span class="fc" id="L353">    }</span>
+
+    private void initConfig() {
+<span class="fc" id="L356">        Optional.ofNullable(blade.bootClass())</span>
+<span class="fc" id="L357">                .map(Class::getPackage)</span>
+<span class="fc" id="L358">                .map(Package::getName)</span>
+<span class="fc" id="L359">                .ifPresent(blade::scanPackages);</span>
+
+        // print banner text
+<span class="fc" id="L362">        this.printBanner();</span>
+
+<span class="fc" id="L364">        String templatePath = environment.get(ENV_KEY_TEMPLATE_PATH, &quot;templates&quot;);</span>
+<span class="pc bpc" id="L365" title="1 of 2 branches missed.">        if (templatePath.charAt(0) == NettyHttpConst.CHAR_SLASH) {</span>
+<span class="nc" id="L366">            templatePath = templatePath.substring(1);</span>
+        }
+<span class="pc bpc" id="L368" title="1 of 2 branches missed.">        if (templatePath.endsWith(NettyHttpConst.SLASH)) {</span>
+<span class="nc" id="L369">            templatePath = templatePath.substring(0, templatePath.length() - 1);</span>
+        }
+<span class="fc" id="L371">        DefaultEngine.TEMPLATE_PATH = templatePath;</span>
+<span class="fc" id="L372">    }</span>
+
+    private void shutdownHook() {
+<span class="fc" id="L375">        var shutdownThread = new Thread(this::stop);</span>
+<span class="fc" id="L376">        shutdownThread.setName(&quot;shutdown@thread&quot;);</span>
+<span class="fc" id="L377">        Runtime.getRuntime().addShutdownHook(shutdownThread);</span>
+<span class="fc" id="L378">    }</span>
+
+    @Override
+    public void stop() {
+<span class="fc bfc" id="L382" title="All 2 branches covered.">        if (stopped) {</span>
+<span class="fc" id="L383">            return;</span>
+        }
+<span class="fc" id="L385">        stopped = true;</span>
+<span class="fc" id="L386">        System.out.println();</span>
+<span class="fc" id="L387">        log.info(&quot;{}Blade shutdown ...&quot;, getStartedSymbol());</span>
+        try {
+<span class="fc" id="L389">            WebContext.clean();</span>
+<span class="pc bpc" id="L390" title="1 of 2 branches missed.">            if (this.bossGroup != null) {</span>
+<span class="fc" id="L391">                this.bossGroup.shutdownGracefully();</span>
+            }
+<span class="pc bpc" id="L393" title="1 of 2 branches missed.">            if (this.workerGroup != null) {</span>
+<span class="fc" id="L394">                this.workerGroup.shutdownGracefully();</span>
+            }
+<span class="fc" id="L396">            log.info(&quot;{}Blade shutdown successful&quot;, getStartedSymbol());</span>
+<span class="nc" id="L397">        } catch (Exception e) {</span>
+<span class="nc" id="L398">            log.error(&quot;Blade shutdown error&quot;, e);</span>
+<span class="fc" id="L399">        }</span>
+<span class="fc" id="L400">    }</span>
+
+    @Override
+    public void stopAndWait() {
+<span class="pc bpc" id="L404" title="1 of 2 branches missed.">        if (stopped) {</span>
+<span class="nc" id="L405">            return;</span>
+        }
+<span class="fc" id="L407">        stopped = true;</span>
+<span class="fc" id="L408">        System.out.println();</span>
+<span class="fc" id="L409">        log.info(&quot;{}Blade shutdown ...&quot;, getStartedSymbol());</span>
+        try {
+<span class="fc bfc" id="L411" title="All 2 branches covered.">            if (this.bossGroup != null) {</span>
+<span class="fc" id="L412">                this.bossGroup.shutdownGracefully().sync();</span>
+            }
+<span class="fc bfc" id="L414" title="All 2 branches covered.">            if (this.workerGroup != null) {</span>
+<span class="fc" id="L415">                this.workerGroup.shutdownGracefully().sync();</span>
+            }
+<span class="fc" id="L417">            log.info(&quot;{}Blade shutdown successful&quot;, getStartedSymbol());</span>
+<span class="nc" id="L418">        } catch (Exception e) {</span>
+<span class="nc" id="L419">            log.error(&quot;Blade shutdown error&quot;, e);</span>
+<span class="fc" id="L420">        }</span>
+<span class="fc" id="L421">    }</span>
+
+    @Override
+    public void join() throws InterruptedException {
+<span class="fc" id="L425">        channel.closeFuture().sync();</span>
+<span class="fc" id="L426">    }</span>
+
+    /**
+     * print blade start banner text
+     */
+    private void printBanner() {
+<span class="pc bpc" id="L432" title="1 of 2 branches missed.">        if (null != blade.bannerText()) {</span>
+<span class="nc" id="L433">            System.out.println(blade.bannerText());</span>
+        } else {
+<span class="fc" id="L435">            String text = BladeConst.BANNER_TEXT + NEW_LINE +</span>
+<span class="fc" id="L436">                    StringKit.padLeft(&quot; :: Blade :: (v&quot;, BladeConst.BANNER_PADDING - 9) + BladeConst.VERSION + &quot;) &quot; + NEW_LINE;</span>
+<span class="fc" id="L437">            System.out.println(Ansi.Magenta.format(text));</span>
+        }
+<span class="fc" id="L439">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

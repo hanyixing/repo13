@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HttpServerHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.server</a> &gt; <span class="el_source">HttpServerHandler.java</span></div><h1>HttpServerHandler.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2018, biezhi 王爵 nice (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.server;
+
+import com.hellokaton.blade.exception.BladeException;
+import com.hellokaton.blade.exception.NotFoundException;
+import com.hellokaton.blade.kit.BladeCache;
+import com.hellokaton.blade.kit.LRUSet;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.handler.ExceptionHandler;
+import com.hellokaton.blade.mvc.http.HttpMethod;
+import com.hellokaton.blade.mvc.http.HttpRequest;
+import com.hellokaton.blade.mvc.http.HttpResponse;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.route.Route;
+import com.hellokaton.blade.mvc.route.RouteMatcher;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.concurrent.FastThreadLocal;
+import lombok.extern.slf4j.Slf4j;
+
+import java.time.Instant;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+
+import static com.hellokaton.blade.kit.BladeKit.log200AndCost;
+import static com.hellokaton.blade.kit.BladeKit.log500;
+import static com.hellokaton.blade.mvc.BladeConst.*;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+
+/**
+ * Http Server Handler
+ *
+ * @author biezhi
+ * 2018/10/15
+ */
+<span class="fc" id="L56">@Slf4j</span>
+@ChannelHandler.Sharable
+<span class="fc" id="L58">public class HttpServerHandler extends SimpleChannelInboundHandler&lt;HttpRequest&gt; {</span>
+
+<span class="fc" id="L60">    public static final FastThreadLocal&lt;WebContext&gt; WEB_CONTEXT_THREAD_LOCAL = new FastThreadLocal&lt;&gt;();</span>
+
+<span class="fc" id="L62">    static final StaticFileHandler staticFileHandler = new StaticFileHandler(WebContext.blade());</span>
+
+<span class="fc" id="L64">    static final RouteMatcher routeMatcher = WebContext.blade().routeMatcher();</span>
+
+<span class="fc" id="L66">    private final RouteMethodHandler routeHandler = new RouteMethodHandler();</span>
+<span class="fc" id="L67">    private final Set&lt;String&gt; notStaticUri = new LRUSet&lt;&gt;(128);</span>
+
+    private boolean recordRequestLog() {
+<span class="nc" id="L70">        return WebContext.blade().environment()</span>
+<span class="nc" id="L71">                .getBoolean(ENV_KEY_REQUEST_LOG, true);</span>
+    }
+
+    private boolean enablePerformance() {
+<span class="nc" id="L75">        return WebContext.blade().environment()</span>
+<span class="nc" id="L76">                .getBoolean(ENV_KEY_PERFORMANCE, false);</span>
+    }
+
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) {
+<span class="fc" id="L81">        ctx.flush();</span>
+<span class="fc" id="L82">    }</span>
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) {
+<span class="fc" id="L86">        CompletableFuture&lt;HttpRequest&gt; future = CompletableFuture.completedFuture(httpRequest);</span>
+
+<span class="fc" id="L88">        Executor executor = ctx.executor();</span>
+
+<span class="fc" id="L90">        future.thenApplyAsync(req -&gt; buildWebContext(ctx, req), executor)</span>
+<span class="fc" id="L91">                .thenApplyAsync(this::executeLogic, executor)</span>
+<span class="fc" id="L92">                .thenApplyAsync(this::buildResponse, executor)</span>
+<span class="fc" id="L93">                .exceptionally(this::handleException)</span>
+<span class="fc" id="L94">                .thenAcceptAsync(msg -&gt; writeResponse(ctx, future, msg), ctx.channel().eventLoop());</span>
+<span class="fc" id="L95">    }</span>
+
+    private WebContext buildWebContext(ChannelHandlerContext ctx,
+                                       HttpRequest req) {
+<span class="fc" id="L99">        return WebContext.create(req, new HttpResponse(), ctx);</span>
+    }
+
+    private void writeResponse(ChannelHandlerContext ctx, CompletableFuture&lt;HttpRequest&gt; future, io.netty.handler.codec.http.HttpResponse msg) {
+<span class="fc" id="L103">        ctx.writeAndFlush(msg);</span>
+<span class="fc" id="L104">        future.complete(null);</span>
+<span class="fc" id="L105">    }</span>
+
+    private io.netty.handler.codec.http.HttpResponse handleException(Throwable e) {
+<span class="fc" id="L108">        Request request = WebContext.request();</span>
+<span class="fc" id="L109">        String method = request.method();</span>
+<span class="fc" id="L110">        String uri = request.uri();</span>
+
+<span class="fc" id="L112">        Exception srcException = (Exception) e.getCause().getCause();</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (srcException instanceof BladeException) {</span>
+        } else {
+<span class="nc" id="L115">            log500(log, method, uri);</span>
+        }
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        if (null != WebContext.blade().exceptionHandler()) {</span>
+<span class="fc" id="L118">            WebContext.blade().exceptionHandler().handle(srcException);</span>
+        } else {
+<span class="nc" id="L120">            log.error(&quot;&quot;, srcException);</span>
+        }
+<span class="fc" id="L122">        return routeHandler.handleResponse(WebContext.get());</span>
+    }
+
+    private io.netty.handler.codec.http.HttpResponse buildResponse(WebContext webContext) {
+<span class="nc" id="L126">        WebContext.set(webContext);</span>
+<span class="nc" id="L127">        return routeHandler.handleResponse(webContext);</span>
+    }
+
+    private WebContext executeLogic(WebContext webContext) {
+        try {
+<span class="fc" id="L132">            WebContext.set(webContext);</span>
+<span class="fc" id="L133">            Request request = webContext.getRequest();</span>
+<span class="fc" id="L134">            HttpMethod method = request.httpMethod();</span>
+<span class="fc" id="L135">            String uri = request.uri();</span>
+<span class="fc" id="L136">            Instant start = Instant.now();</span>
+
+<span class="pc bpc" id="L138" title="1 of 2 branches missed.">            if (isStaticFile(method, uri)) {</span>
+<span class="nc" id="L139">                staticFileHandler.handle(webContext);</span>
+<span class="nc" id="L140">                return webContext;</span>
+            }
+
+<span class="fc" id="L143">            Route route = routeMatcher.lookupRoute(method.name(), uri);</span>
+<span class="pc bpc" id="L144" title="1 of 2 branches missed.">            if (null != route) {</span>
+<span class="nc" id="L145">                webContext.setRoute(route);</span>
+            } else {
+<span class="fc" id="L147">                throw new NotFoundException(uri);</span>
+            }
+<span class="nc" id="L149">            routeHandler.handle(webContext);</span>
+
+<span class="nc bnc" id="L151" title="All 2 branches missed.">            if (enablePerformance()) {</span>
+<span class="nc" id="L152">                return webContext;</span>
+            }
+
+<span class="nc bnc" id="L155" title="All 2 branches missed.">            if (recordRequestLog()) {</span>
+<span class="nc" id="L156">                long cost = log200AndCost(log, start, BladeCache.getPaddingMethod(method.name()), uri);</span>
+<span class="nc" id="L157">                request.attribute(REQUEST_COST_TIME_ATTR, cost);</span>
+            }
+<span class="nc" id="L159">            return webContext;</span>
+<span class="fc" id="L160">        } catch (Exception e) {</span>
+<span class="fc" id="L161">            throw BladeException.wrapper(e);</span>
+        }
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+<span class="fc bfc" id="L167" title="All 2 branches covered.">        if (!ExceptionHandler.isResetByPeer(cause)) {</span>
+<span class="fc" id="L168">            log.error(cause.getMessage(), cause);</span>
+<span class="fc" id="L169">            FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.valueOf(500));</span>
+<span class="fc" id="L170">            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);</span>
+        }
+<span class="fc" id="L172">    }</span>
+
+    private boolean isStaticFile(HttpMethod method, String uri) {
+<span class="pc bpc" id="L175" title="1 of 4 branches missed.">        if (!HttpMethod.GET.equals(method) || notStaticUri.contains(uri)) {</span>
+<span class="fc" id="L176">            return false;</span>
+        }
+
+<span class="fc bfc" id="L179" title="All 2 branches covered.">        if (FAVICON_PATH.equals(uri)) {</span>
+<span class="fc" id="L180">            return true;</span>
+        }
+
+<span class="fc" id="L183">        Set&lt;String&gt; paths = WebContext.blade().staticOptions().getPaths();</span>
+<span class="pc bpc" id="L184" title="1 of 6 branches missed.">        if (paths.stream().noneMatch(s -&gt; s.equals(uri) || uri.startsWith(s))) {</span>
+<span class="fc" id="L185">            notStaticUri.add(uri);</span>
+<span class="fc" id="L186">            return false;</span>
+        }
+
+<span class="fc" id="L189">        return true;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

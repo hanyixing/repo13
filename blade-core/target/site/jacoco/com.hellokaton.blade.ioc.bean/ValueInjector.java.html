@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ValueInjector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.ioc.bean</a> &gt; <span class="el_source">ValueInjector.java</span></div><h1>ValueInjector.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.ioc.bean;
+
+import com.hellokaton.blade.Environment;
+import com.hellokaton.blade.ioc.Injector;
+import com.hellokaton.blade.kit.ReflectKit;
+import com.hellokaton.blade.kit.StringKit;
+import lombok.extern.slf4j.Slf4j;
+
+import java.lang.reflect.Field;
+import java.util.*;
+
+/**
+ * Config annotation can be injected
+ *
+ * @author &lt;a href=&quot;mailto:chenchen_839@126.com&quot; target=&quot;_blank&quot;&gt;ccqy66&lt;/a&gt;
+ */
+<span class="fc" id="L17">@Slf4j</span>
+public class ValueInjector implements Injector {
+    private Environment environment;
+    private Field target;
+    private String key;
+
+<span class="fc" id="L23">    public ValueInjector(Environment environment, Field target, String key) {</span>
+<span class="fc" id="L24">        this.environment = environment;</span>
+<span class="fc" id="L25">        this.target = target;</span>
+<span class="fc" id="L26">        this.key = key;</span>
+<span class="fc" id="L27">    }</span>
+
+    @Override
+    public void injection(Object bean) {
+        try {
+<span class="pc bpc" id="L32" title="1 of 2 branches missed.">            if (!key.isEmpty()) {</span>
+<span class="fc" id="L33">                Class&lt;?&gt; clazz = target.getType();</span>
+<span class="fc" id="L34">                target.setAccessible(true);</span>
+<span class="fc" id="L35">                Optional&lt;String&gt; fieldValue = environment.get(key);</span>
+<span class="fc bfc" id="L36" title="All 2 branches covered.">                if (!fieldValue.isPresent()) {</span>
+<span class="fc" id="L37">                    log.warn(&quot;config is absent,so can't be injected:target is {}&quot;, bean.getClass().getName());</span>
+<span class="fc" id="L38">                    return;</span>
+                }
+
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">                if (fieldValue.get().isEmpty()) {</span>
+<span class="nc" id="L42">                    log.warn(&quot;config is empty,so can't be injected:target is {}&quot;, bean.getClass().getName());</span>
+<span class="nc" id="L43">                    return;</span>
+                }
+
+<span class="fc" id="L46">                Object value = null;</span>
+
+                //target field type is Basic Type
+<span class="fc bfc" id="L49" title="All 2 branches covered.">                if (ReflectKit.isBasicType(clazz)) {</span>
+<span class="pc bpc" id="L50" title="2 of 4 branches missed.">                    if (fieldValue.isPresent() &amp;&amp; StringKit.isNotBlank(fieldValue.get())) {</span>
+<span class="fc" id="L51">                        value = ReflectKit.convert(clazz, fieldValue.get());</span>
+                    }
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">                    if (null != value) {</span>
+<span class="fc" id="L54">                        ReflectKit.setFieldValue(target, bean, value);</span>
+                    }
+                }
+
+                //List and Map support,just support String element
+<span class="fc" id="L59">                String split = environment.get(&quot;value.split&quot;, &quot;,&quot;);</span>
+<span class="fc" id="L60">                String mapSplit = environment.get(&quot;value.map.split&quot;, &quot;:&quot;);</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">                if (clazz.isAssignableFrom(List.class)) {</span>
+<span class="fc" id="L62">                    target.set(bean, Arrays.asList(fieldValue.get().split(split)));</span>
+<span class="fc" id="L63">                    return;</span>
+                }
+<span class="fc" id="L65">                Map&lt;String, String&gt; map = new HashMap&lt;&gt;(16);</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">                if (clazz.isAssignableFrom(Map.class)) {</span>
+<span class="fc" id="L67">                    Arrays.stream(fieldValue.get().split(split))</span>
+<span class="fc" id="L68">                            .filter(d -&gt; d.contains(mapSplit))</span>
+<span class="fc" id="L69">                            .map(d -&gt; d.split(mapSplit))</span>
+<span class="fc" id="L70">                            .forEach(keyValue -&gt; map.put(keyValue[0], keyValue[1]));</span>
+<span class="fc" id="L71">                    target.set(bean, map);</span>
+<span class="fc" id="L72">                    return;</span>
+                }
+<span class="fc" id="L74">            } else {</span>
+<span class="nc" id="L75">                log.warn(&quot;key is empty,so can't be injected:target is {}&quot;, bean.getClass().getName());</span>
+            }
+<span class="nc" id="L77">        } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L78">            log.error(&quot;inject config error! key is {},bean is {}&quot;, key, bean.getClass().getSimpleName(), e);</span>
+<span class="fc" id="L79">        }</span>
+<span class="fc" id="L80">    }</span>
+
+    @Override
+    public void injection(Object bean, Object value) {
+        // TODO
+<span class="nc" id="L85">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

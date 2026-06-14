@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HttpRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.http</a> &gt; <span class="el_source">HttpRequest.java</span></div><h1>HttpRequest.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2018, biezhi 王爵 nice (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.mvc.http;
+
+import com.hellokaton.blade.exception.HttpParseException;
+import com.hellokaton.blade.kit.CaseInsensitiveHashMap;
+import com.hellokaton.blade.kit.PathKit;
+import com.hellokaton.blade.kit.StringKit;
+import com.hellokaton.blade.mvc.HttpConst;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.handler.SessionHandler;
+import com.hellokaton.blade.mvc.http.session.SessionManager;
+import com.hellokaton.blade.mvc.multipart.FileItem;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.cookie.ServerCookieDecoder;
+import io.netty.handler.codec.http.multipart.*;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+import static com.hellokaton.blade.mvc.HttpConst.HEADER_ACCEPT_ENCODING;
+import static com.hellokaton.blade.mvc.HttpConst.HEADER_HOST;
+
+/**
+ * HttpRequest
+ *
+ * @author hellokaton
+ * 2022/5/9
+ */
+<span class="fc" id="L53">@Slf4j</span>
+<span class="nc" id="L54">@NoArgsConstructor</span>
+public class HttpRequest implements Request {
+
+<span class="fc" id="L57">    static final HttpDataFactory HTTP_DATA_FACTORY =</span>
+            new DefaultHttpDataFactory(DefaultHttpDataFactory.MINSIZE); // Disk if size exceed
+
+<span class="fc" id="L60">    static SessionHandler SESSION_HANDLER = null;</span>
+
+    static {
+<span class="fc" id="L63">        DiskFileUpload.deleteOnExitTemporaryFile = true; // should delete file</span>
+<span class="fc" id="L64">        DiskFileUpload.baseDirectory = null;             // system temp directory</span>
+<span class="fc" id="L65">        DiskAttribute.deleteOnExitTemporaryFile = true;  // should delete file on</span>
+<span class="fc" id="L66">        DiskAttribute.baseDirectory = null;              // system temp directory</span>
+<span class="fc" id="L67">    }</span>
+
+<span class="pc" id="L69">    private ByteBuf body = Unpooled.EMPTY_BUFFER;</span>
+    private String remoteAddress;
+    private String uri;
+    private String url;
+    private String protocol;
+    private String method;
+    private String contentType;
+    private boolean keepAlive;
+    private Session session;
+    private boolean isMultipart;
+
+<span class="pc" id="L80">    private Map&lt;String, Object&gt; attributes = Collections.emptyMap();</span>
+<span class="pc" id="L81">    private Map&lt;String, String&gt; pathParams = Collections.emptyMap();</span>
+<span class="pc" id="L82">    private Map&lt;String, List&lt;String&gt;&gt; queryParams = Collections.emptyMap();</span>
+<span class="pc" id="L83">    private Map&lt;String, List&lt;String&gt;&gt; formParams = Collections.emptyMap();</span>
+<span class="pc" id="L84">    private Map&lt;String, List&lt;String&gt;&gt; headers = Collections.emptyMap();</span>
+<span class="pc" id="L85">    private Map&lt;String, Cookie&gt; cookies = Collections.emptyMap();</span>
+<span class="pc" id="L86">    private Map&lt;String, FileItem&gt; fileItems = Collections.emptyMap();</span>
+
+<span class="fc" id="L88">    public HttpRequest(Request request) {</span>
+<span class="fc" id="L89">        this.pathParams = request.pathParams();</span>
+<span class="fc" id="L90">        this.cookies = request.cookies();</span>
+<span class="fc" id="L91">        this.attributes = request.attributes();</span>
+<span class="fc" id="L92">        this.body = request.body();</span>
+<span class="fc" id="L93">        this.fileItems = request.fileItems();</span>
+<span class="fc" id="L94">        this.headers = request.headers();</span>
+<span class="fc" id="L95">        this.keepAlive = request.keepAlive();</span>
+<span class="fc" id="L96">        this.method = request.method();</span>
+<span class="fc" id="L97">        this.url = request.url();</span>
+
+<span class="pc bpc" id="L99" title="2 of 4 branches missed.">        if (null != this.url &amp;&amp; this.url.length() &gt; 0) {</span>
+<span class="fc" id="L100">            var queryPost = this.url.indexOf('?');</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">            this.uri = queryPost &lt; 0 ? this.url : this.url.substring(0, queryPost);</span>
+        }
+
+<span class="fc" id="L104">        this.formParams = request.formParams();</span>
+<span class="fc" id="L105">        this.protocol = request.protocol();</span>
+<span class="fc" id="L106">    }</span>
+
+    @Override
+    public Request initPathParams(Map&lt;String, String&gt; pathParams) {
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (null != pathParams)</span>
+<span class="nc" id="L111">            this.pathParams = pathParams;</span>
+<span class="nc" id="L112">        return this;</span>
+    }
+
+    @Override
+    public String host() {
+<span class="nc" id="L117">        return this.header(HEADER_HOST);</span>
+    }
+
+    @Override
+    public String remoteAddress() {
+<span class="nc" id="L122">        return this.remoteAddress;</span>
+    }
+
+    @Override
+    public String uri() {
+<span class="fc" id="L127">        return this.uri;</span>
+    }
+
+    @Override
+    public String url() {
+<span class="fc" id="L132">        return this.url;</span>
+    }
+
+    @Override
+    public String protocol() {
+<span class="nc" id="L137">        return this.protocol;</span>
+    }
+
+    @Override
+    public Map&lt;String, String&gt; pathParams() {
+<span class="fc" id="L142">        return this.pathParams;</span>
+    }
+
+    @Override
+    public String queryString() {
+<span class="pc bpc" id="L147" title="2 of 4 branches missed.">        if (null == url || !url.contains(&quot;?&quot;)) {</span>
+<span class="nc" id="L148">            return &quot;&quot;;</span>
+        }
+<span class="fc" id="L150">        return url.substring(url.indexOf(&quot;?&quot;) + 1);</span>
+    }
+
+    @Override
+    public Map&lt;String, List&lt;String&gt;&gt; queryParams() {
+<span class="fc" id="L155">        return this.queryParams;</span>
+    }
+
+    @Override
+    public Map&lt;String, List&lt;String&gt;&gt; formParams() {
+<span class="fc" id="L160">        return this.formParams;</span>
+    }
+
+    @Override
+    public Set&lt;String&gt; parameterNames() {
+<span class="nc" id="L165">        return this.formParams.keySet();</span>
+    }
+
+    @Override
+    public List&lt;String&gt; formValue(String paramName) {
+<span class="nc" id="L170">        return this.formParams.get(paramName);</span>
+    }
+
+    @Override
+    public String method() {
+<span class="fc" id="L175">        return this.method;</span>
+    }
+
+    @Override
+    public HttpMethod httpMethod() {
+<span class="fc" id="L180">        return HttpMethod.valueOf(method());</span>
+    }
+
+    @Override
+    public boolean useGZIP() {
+<span class="nc" id="L185">        boolean useGZIP = WebContext.blade().httpOptions().isEnableGzip();</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">        if (!useGZIP) {</span>
+<span class="nc" id="L187">            return false;</span>
+        }
+
+<span class="nc" id="L190">        String acceptEncoding = this.header(HEADER_ACCEPT_ENCODING);</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (StringKit.isEmpty(acceptEncoding)) {</span>
+<span class="nc" id="L192">            return false;</span>
+        }
+<span class="nc" id="L194">        return acceptEncoding.contains(&quot;gzip&quot;);</span>
+    }
+
+    @Override
+    public Session session() {
+<span class="fc" id="L199">        return this.session;</span>
+    }
+
+    @Override
+    public boolean isSecure() {
+<span class="nc" id="L204">        return false;</span>
+    }
+
+    @Override
+    public boolean isIE() {
+<span class="fc" id="L209">        String ua = userAgent();</span>
+<span class="pc bpc" id="L210" title="1 of 4 branches missed.">        return ua.contains(&quot;MSIE&quot;) || ua.contains(&quot;TRIDENT&quot;);</span>
+    }
+
+    @Override
+    public Map&lt;String, Cookie&gt; cookies() {
+<span class="nc" id="L215">        return this.cookies;</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L219" title="All 2 branches missed.">    public Cookie cookieRaw(@NonNull String name) {</span>
+<span class="nc" id="L220">        return this.cookies().get(name);</span>
+    }
+
+    @Override
+<span class="nc bnc" id="L224" title="All 2 branches missed.">    public Request cookie(@NonNull Cookie cookie) {</span>
+<span class="nc" id="L225">        this.cookies().put(cookie.name(), cookie);</span>
+<span class="nc" id="L226">        return this;</span>
+    }
+
+    @Override
+    public Map&lt;String, List&lt;String&gt;&gt; headers() {
+<span class="fc" id="L231">        return this.headers;</span>
+    }
+
+    @Override
+    public boolean keepAlive() {
+<span class="nc" id="L236">        return this.keepAlive;</span>
+    }
+
+    @Override
+    public Map&lt;String, Object&gt; attributes() {
+<span class="pc bpc" id="L241" title="2 of 4 branches missed.">        if (null == this.attributes || this.attributes.isEmpty()) {</span>
+<span class="nc" id="L242">            this.attributes = new HashMap&lt;&gt;(4);</span>
+        }
+<span class="fc" id="L244">        return this.attributes;</span>
+    }
+
+    @Override
+    public Map&lt;String, FileItem&gt; fileItems() {
+<span class="fc" id="L249">        return fileItems;</span>
+    }
+
+    @Override
+    public ByteBuf body() {
+<span class="nc" id="L254">        return this.body;</span>
+    }
+
+    @Override
+    public boolean isMultipart() {
+<span class="nc" id="L259">        return isMultipart;</span>
+    }
+
+<span class="fc" id="L262">    public HttpRequest(String remoteAddress, FullHttpRequest fullHttpRequest) {</span>
+<span class="fc" id="L263">        this.remoteAddress = remoteAddress.substring(1);</span>
+<span class="fc" id="L264">        this.keepAlive = HttpUtil.isKeepAlive(fullHttpRequest);</span>
+<span class="fc" id="L265">        this.url = fullHttpRequest.uri();</span>
+
+<span class="fc" id="L267">        int queryPos = this.url().indexOf('?');</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">        this.uri = queryPos &lt; 0 ? this.url() : this.url().substring(0, queryPos);</span>
+<span class="fc" id="L269">        this.protocol = fullHttpRequest.protocolVersion().text();</span>
+<span class="fc" id="L270">        this.method = fullHttpRequest.method().name();</span>
+
+<span class="fc" id="L272">        String cleanUri = this.uri;</span>
+<span class="pc bpc" id="L273" title="1 of 2 branches missed.">        if (!&quot;/&quot;.equals(this.contextPath())) {</span>
+<span class="nc" id="L274">            cleanUri = PathKit.cleanPath(cleanUri.replaceFirst(this.contextPath(), &quot;/&quot;));</span>
+<span class="nc" id="L275">            this.uri = cleanUri;</span>
+        }
+
+<span class="fc" id="L278">        HttpHeaders httpHeaders = fullHttpRequest.headers();</span>
+<span class="pc bpc" id="L279" title="2 of 4 branches missed.">        if (null == this.headers || this.headers.isEmpty()) {</span>
+<span class="fc" id="L280">            this.headers = new CaseInsensitiveHashMap&lt;&gt;(httpHeaders.size());</span>
+<span class="fc" id="L281">            httpHeaders.forEach(this::putHeaderValues);</span>
+        }
+
+<span class="fc" id="L284">        this.parseContentType();</span>
+<span class="fc" id="L285">        this.parseCookie();</span>
+
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">        if (WebContext.blade().httpOptions().isEnableSession()) {</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">            if (null == SESSION_HANDLER) {</span>
+<span class="nc" id="L289">                SESSION_HANDLER = new SessionHandler(WebContext.blade());</span>
+            }
+<span class="nc" id="L291">            SessionManager sessionManager = WebContext.blade().sessionManager();</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">            if (null != sessionManager) {</span>
+<span class="nc" id="L293">                this.session = SESSION_HANDLER.createSession(this);</span>
+            }
+        }
+
+<span class="pc bpc" id="L297" title="1 of 2 branches missed.">        if (queryPos &gt; 0) {</span>
+<span class="nc" id="L298">            QueryStringDecoder queryDecoder = new QueryStringDecoder(this.url, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L299">            Map&lt;String, List&lt;String&gt;&gt; query = queryDecoder.parameters();</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">            if (null != query) {</span>
+<span class="nc" id="L301">                this.queryParams = query;</span>
+            }
+        }
+
+<span class="pc bpc" id="L305" title="1 of 2 branches missed.">        if (HttpMethod.GET.name().equals(this.method())) {</span>
+<span class="fc" id="L306">            return;</span>
+        }
+
+        try {
+<span class="nc" id="L310">            this.body = fullHttpRequest.content().copy();</span>
+
+            // if request is multipart/form-data
+<span class="nc bnc" id="L313" title="All 2 branches missed.">            if (HttpConst.CONTENT_TYPE_MULTIPART.equals(this.contentType)) {</span>
+<span class="nc" id="L314">                this.isMultipart = true;</span>
+<span class="nc" id="L315">                this.formParams = new HashMap&lt;&gt;(8);</span>
+<span class="nc" id="L316">                this.fileItems = new HashMap&lt;&gt;(8);</span>
+<span class="nc" id="L317">                HttpPostMultipartRequestDecoder decoder = new HttpPostMultipartRequestDecoder(HTTP_DATA_FACTORY, fullHttpRequest);</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">                while (decoder.hasNext()) {</span>
+<span class="nc" id="L319">                    InterfaceHttpData httpData = decoder.next();</span>
+<span class="nc" id="L320">                    this.writeHttpData(httpData);</span>
+<span class="nc" id="L321">                }</span>
+<span class="nc" id="L322">            } else {</span>
+<span class="nc" id="L323">                String paramString = fullHttpRequest.content().toString(StandardCharsets.UTF_8);</span>
+<span class="nc" id="L324">                QueryStringDecoder queryDecoder = new QueryStringDecoder(paramString, false);</span>
+<span class="nc" id="L325">                Map&lt;String, List&lt;String&gt;&gt; uriAttributes = queryDecoder.parameters();</span>
+<span class="nc bnc" id="L326" title="All 4 branches missed.">                if (null != uriAttributes &amp;&amp; !uriAttributes.isEmpty()) {</span>
+<span class="nc" id="L327">                    this.formParams = uriAttributes;</span>
+                }
+            }
+<span class="nc" id="L330">        } catch (Exception e) {</span>
+<span class="nc" id="L331">            throw new HttpParseException(&quot;build decoder fail&quot;, e);</span>
+<span class="nc" id="L332">        }</span>
+<span class="nc" id="L333">    }</span>
+
+    private void putHeaderValues(Map.Entry&lt;String, String&gt; header) {
+<span class="fc" id="L336">        String headerName = header.getKey();</span>
+<span class="fc" id="L337">        String headerValue = header.getValue();</span>
+<span class="pc bpc" id="L338" title="1 of 2 branches missed.">        if (!this.headers.containsKey(headerName)) {</span>
+<span class="fc" id="L339">            List&lt;String&gt; values = new ArrayList&lt;&gt;(2);</span>
+<span class="fc" id="L340">            values.add(headerValue);</span>
+<span class="fc" id="L341">            this.headers.put(headerName, values);</span>
+<span class="fc" id="L342">            return;</span>
+        }
+<span class="nc" id="L344">        List&lt;String&gt; values = this.headers.get(headerName);</span>
+<span class="nc bnc" id="L345" title="All 4 branches missed.">        if (null != values &amp;&amp; !values.isEmpty()) {</span>
+<span class="nc" id="L346">            values.add(headerValue);</span>
+<span class="nc" id="L347">            this.headers.put(headerName, values);</span>
+        }
+<span class="nc" id="L349">    }</span>
+
+    private void parseCookie() {
+<span class="fc" id="L352">        List&lt;String&gt; cookies = this.getHeader(HttpConst.HEADER_COOKIE);</span>
+<span class="pc bpc" id="L353" title="3 of 4 branches missed.">        if (null == cookies || cookies.isEmpty()) {</span>
+<span class="fc" id="L354">            return;</span>
+        }
+<span class="nc" id="L356">        this.cookies = new HashMap&lt;&gt;(8);</span>
+<span class="nc bnc" id="L357" title="All 2 branches missed.">        for (String cookie : cookies) {</span>
+<span class="nc" id="L358">            ServerCookieDecoder.LAX.decode(cookie).forEach(this::parseCookie);</span>
+<span class="nc" id="L359">        }</span>
+<span class="nc" id="L360">    }</span>
+
+    private void parseContentType() {
+<span class="fc" id="L363">        String contentType = this.header(HttpConst.HEADER_CONTENT_TYPE);</span>
+<span class="pc bpc" id="L364" title="1 of 2 branches missed.">        if (null != contentType) {</span>
+<span class="fc" id="L365">            contentType = contentType.toLowerCase();</span>
+        }
+<span class="pc bpc" id="L367" title="2 of 4 branches missed.">        if (null != contentType &amp;&amp; contentType.contains(&quot;;&quot;)) {</span>
+<span class="nc" id="L368">            contentType = contentType.split(&quot;;&quot;)[0];</span>
+        }
+<span class="fc" id="L370">        this.contentType = contentType;</span>
+<span class="fc" id="L371">    }</span>
+
+    private void writeHttpData(InterfaceHttpData data) {
+<span class="nc" id="L374">        boolean canRelease = false;</span>
+        try {
+<span class="nc bnc" id="L376" title="All 2 branches missed.">            if (null == data) {</span>
+<span class="nc" id="L377">                return;</span>
+            }
+<span class="nc" id="L379">            InterfaceHttpData.HttpDataType dataType = data.getHttpDataType();</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">            if (dataType == InterfaceHttpData.HttpDataType.Attribute) {</span>
+<span class="nc" id="L381">                parseAttribute((Attribute) data);</span>
+<span class="nc" id="L382">                canRelease = true;</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">            } else if (dataType == InterfaceHttpData.HttpDataType.FileUpload) {</span>
+<span class="nc" id="L384">                parseFileUpload((FileUpload) data);</span>
+            }
+<span class="nc" id="L386">        } catch (IOException e) {</span>
+<span class="nc" id="L387">            log.error(&quot;Parse request parameter error&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L389" title="All 2 branches missed.">            if (canRelease) {</span>
+<span class="nc" id="L390">                data.release();</span>
+            }
+        }
+<span class="nc" id="L393">    }</span>
+
+    private void parseAttribute(Attribute attribute) throws IOException {
+<span class="nc" id="L396">        var name = attribute.getName();</span>
+<span class="nc" id="L397">        var value = attribute.getValue();</span>
+
+<span class="nc bnc" id="L399" title="All 2 branches missed.">        if (StringKit.isEmpty(name)) {</span>
+<span class="nc" id="L400">            return;</span>
+        }
+        List&lt;String&gt; values;
+<span class="nc bnc" id="L403" title="All 2 branches missed.">        if (this.formParams.containsKey(name)) {</span>
+<span class="nc" id="L404">            values = this.formParams.get(name);</span>
+<span class="nc" id="L405">            values.add(value);</span>
+        } else {
+<span class="nc" id="L407">            values = new ArrayList&lt;&gt;(4);</span>
+<span class="nc" id="L408">            values.add(value);</span>
+<span class="nc" id="L409">            this.formParams.put(name, values);</span>
+        }
+<span class="nc" id="L411">    }</span>
+
+    /**
+     * Parse FileUpload to {@link FileItem}.
+     *
+     * @param fileUpload netty http file upload
+     */
+    private void parseFileUpload(FileUpload fileUpload) throws IOException {
+<span class="nc bnc" id="L419" title="All 2 branches missed.">        if (!fileUpload.isCompleted()) {</span>
+<span class="nc" id="L420">            return;</span>
+        }
+<span class="nc" id="L422">        FileItem fileItem = new FileItem();</span>
+<span class="nc" id="L423">        fileItem.setName(fileUpload.getName());</span>
+<span class="nc" id="L424">        fileItem.setFileName(fileUpload.getFilename());</span>
+<span class="nc" id="L425">        fileItem.setContentType(fileUpload.getContentType());</span>
+<span class="nc" id="L426">        fileItem.setLength(fileUpload.length());</span>
+
+        // Upload the file is moved to the specified temporary file,
+        // because FileUpload will be release after completion of the analysis.
+        // tmpFile will be deleted automatically if they are used.
+<span class="nc bnc" id="L431" title="All 2 branches missed.">        if (fileUpload.isInMemory()) {</span>
+<span class="nc" id="L432">            fileItem.setInMemory(true);</span>
+<span class="nc" id="L433">            fileItem.setData(fileUpload.get());</span>
+        } else {
+<span class="nc" id="L435">            fileItem.setFile(fileUpload.getFile());</span>
+<span class="nc" id="L436">            fileItem.setPath(fileUpload.getFile().getPath());</span>
+<span class="nc" id="L437">            fileItem.setInMemory(false);</span>
+        }
+<span class="nc" id="L439">        fileItems.put(fileItem.getName(), fileItem);</span>
+<span class="nc" id="L440">    }</span>
+
+    /**
+     * Parse netty cookie to {@link Cookie}.
+     *
+     * @param nettyCookie netty raw cookie instance
+     */
+    private void parseCookie(io.netty.handler.codec.http.cookie.Cookie nettyCookie) {
+<span class="nc" id="L448">        var cookie = new Cookie();</span>
+<span class="nc" id="L449">        cookie.name(nettyCookie.name());</span>
+<span class="nc" id="L450">        cookie.value(nettyCookie.value());</span>
+<span class="nc" id="L451">        cookie.httpOnly(nettyCookie.isHttpOnly());</span>
+<span class="nc" id="L452">        cookie.path(nettyCookie.path());</span>
+<span class="nc" id="L453">        cookie.domain(nettyCookie.domain());</span>
+<span class="nc" id="L454">        cookie.maxAge(nettyCookie.maxAge());</span>
+<span class="nc" id="L455">        this.cookies.put(cookie.name(), cookie);</span>
+<span class="nc" id="L456">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

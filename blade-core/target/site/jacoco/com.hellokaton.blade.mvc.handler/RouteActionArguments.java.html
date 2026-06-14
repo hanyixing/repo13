@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RouteActionArguments.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.handler</a> &gt; <span class="el_source">RouteActionArguments.java</span></div><h1>RouteActionArguments.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.handler;
+
+import com.hellokaton.blade.annotation.request.*;
+import com.hellokaton.blade.asm.ASMUtils;
+import com.hellokaton.blade.exception.BladeException;
+import com.hellokaton.blade.kit.JsonKit;
+import com.hellokaton.blade.kit.ReflectKit;
+import com.hellokaton.blade.kit.StringKit;
+import com.hellokaton.blade.mvc.RouteContext;
+import com.hellokaton.blade.mvc.http.HttpSession;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.http.Response;
+import com.hellokaton.blade.mvc.http.Session;
+import com.hellokaton.blade.mvc.multipart.FileItem;
+import com.hellokaton.blade.mvc.ui.ModelAndView;
+
+import java.lang.reflect.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Route method param parse
+ *
+ * @author biezhi
+ * 2017/9/20
+ */
+<span class="nc" id="L30">public final class RouteActionArguments {</span>
+
+    public static Object[] getRouteActionParameters(RouteContext context) {
+<span class="nc" id="L33">        Method actionMethod = context.routeAction();</span>
+<span class="nc" id="L34">        Request request = context.request();</span>
+<span class="nc" id="L35">        actionMethod.setAccessible(true);</span>
+
+<span class="nc" id="L37">        Parameter[] parameters = actionMethod.getParameters();</span>
+<span class="nc" id="L38">        Object[] args = new Object[parameters.length];</span>
+<span class="nc" id="L39">        String[] parameterNames = ASMUtils.findMethodParmeterNames(actionMethod);</span>
+
+<span class="nc bnc" id="L41" title="All 2 branches missed.">        for (int i = 0, len = parameters.length; i &lt; len; i++) {</span>
+<span class="nc" id="L42">            Parameter parameter = parameters[i];</span>
+<span class="nc" id="L43">            String paramName = Objects.requireNonNull(parameterNames)[i];</span>
+<span class="nc" id="L44">            Type argType = parameter.getParameterizedType();</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">            if (containsAnnotation(parameter)) {</span>
+<span class="nc" id="L46">                args[i] = getAnnotationParam(parameter, paramName, request);</span>
+<span class="nc" id="L47">                continue;</span>
+            }
+<span class="nc bnc" id="L49" title="All 2 branches missed.">            if (ReflectKit.isBasicType(argType)) {</span>
+<span class="nc" id="L50">                args[i] = request.query(paramName);</span>
+<span class="nc" id="L51">                continue;</span>
+            }
+<span class="nc" id="L53">            args[i] = getCustomType(parameter, paramName, context);</span>
+        }
+<span class="nc" id="L55">        return args;</span>
+    }
+
+    private static boolean containsAnnotation(Parameter parameter) {
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        return parameter.getAnnotation(PathParam.class) != null ||</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">                parameter.getAnnotation(Query.class) != null ||</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">                parameter.getAnnotation(Form.class) != null ||</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">                parameter.getAnnotation(Header.class) != null ||</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">                parameter.getAnnotation(Body.class) != null ||</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">                parameter.getAnnotation(Cookie.class) != null ||</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">                parameter.getAnnotation(Multipart.class) != null;</span>
+    }
+
+    private static Object getCustomType(Parameter parameter, String paramName, RouteContext context) {
+<span class="nc" id="L69">        Type argType = parameter.getParameterizedType();</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (argType == RouteContext.class) {</span>
+<span class="nc" id="L71">            return context;</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        } else if (argType == Request.class) {</span>
+<span class="nc" id="L73">            return context.request();</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        } else if (argType == Response.class) {</span>
+<span class="nc" id="L75">            return context.response();</span>
+<span class="nc bnc" id="L76" title="All 4 branches missed.">        } else if (argType == Session.class || argType == HttpSession.class) {</span>
+<span class="nc" id="L77">            return context.request().session();</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        } else if (argType == FileItem.class) {</span>
+<span class="nc" id="L79">            return new ArrayList&lt;&gt;(context.request().fileItems().values()).get(0);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        } else if (argType == ModelAndView.class) {</span>
+<span class="nc" id="L81">            return new ModelAndView();</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        } else if (argType == Map.class) {</span>
+<span class="nc" id="L83">            return context.request().formParams();</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        } else if (argType == Optional.class) {</span>
+<span class="nc" id="L85">            ParameterizedType firstParam = (ParameterizedType) parameter.getParameterizedType();</span>
+<span class="nc" id="L86">            Type paramsOfFirstGeneric = firstParam.getActualTypeArguments()[0];</span>
+<span class="nc" id="L87">            Class&lt;?&gt; modelType = ReflectKit.form(paramsOfFirstGeneric.getTypeName());</span>
+<span class="nc" id="L88">            return Optional.ofNullable(parseModel(modelType, context.request(), null));</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        } else if (ParameterizedType.class.isInstance(argType)) {</span>
+<span class="nc" id="L90">            String name = parameter.getName();</span>
+<span class="nc" id="L91">            List&lt;String&gt; values = context.request().formParams().get(name);</span>
+<span class="nc" id="L92">            return getParameterizedTypeValues(values, argType);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        } else if (ReflectKit.isArray(argType)) {</span>
+<span class="nc" id="L94">            List&lt;String&gt; values = context.request().formParams().get(paramName);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if (null == values) {</span>
+<span class="nc" id="L96">                return null;</span>
+            }
+<span class="nc" id="L98">            Class arrayCls = (Class) argType;</span>
+<span class="nc" id="L99">            Object aObject = Array.newInstance(arrayCls.getComponentType(), values.size());</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">            for (int i = 0; i &lt; values.size(); i++) {</span>
+<span class="nc" id="L101">                Array.set(aObject, i, ReflectKit.convert(arrayCls.getComponentType(), values.get(i)));</span>
+            }
+<span class="nc" id="L103">            return aObject;</span>
+        } else {
+<span class="nc" id="L105">            return parseModel(ReflectKit.typeToClass(argType), context.request(), null);</span>
+        }
+    }
+
+    private static Object getAnnotationParam(Parameter parameter, String paramName, Request request) {
+<span class="nc" id="L110">        Type argType = parameter.getParameterizedType();</span>
+<span class="nc" id="L111">        Query query = parameter.getAnnotation(Query.class);</span>
+
+<span class="nc" id="L113">        ParamStruct.ParamStructBuilder structBuilder = ParamStruct.builder().argType(argType).request(request);</span>
+
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        if (null != query) {</span>
+<span class="nc" id="L116">            return getQueryParam(structBuilder.query(query).paramName(paramName).build());</span>
+        }
+
+<span class="nc" id="L119">        Form form = parameter.getAnnotation(Form.class);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (null != form) {</span>
+<span class="nc" id="L121">            return getFormParam(structBuilder.form(form).paramName(paramName).build());</span>
+        }
+
+<span class="nc" id="L124">        Body body = parameter.getAnnotation(Body.class);</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (null != body) {</span>
+<span class="nc" id="L126">            return getBodyParam(structBuilder.build());</span>
+        }
+<span class="nc" id="L128">        PathParam pathParam = parameter.getAnnotation(PathParam.class);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (null != pathParam) {</span>
+<span class="nc" id="L130">            return getPathParam(structBuilder.pathParam(pathParam).paramName(paramName).build());</span>
+        }
+<span class="nc" id="L132">        Header header = parameter.getAnnotation(Header.class);</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (null != header) {</span>
+<span class="nc" id="L134">            return getHeader(structBuilder.header(header).paramName(paramName).build());</span>
+        }
+        // cookie param
+<span class="nc" id="L137">        Cookie cookie = parameter.getAnnotation(Cookie.class);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (null != cookie) {</span>
+<span class="nc" id="L139">            return getCookie(structBuilder.cookie(cookie).paramName(paramName).build());</span>
+        }
+        // form multipart
+<span class="nc" id="L142">        Multipart multipart = parameter.getAnnotation(Multipart.class);</span>
+<span class="nc bnc" id="L143" title="All 4 branches missed.">        if (null != multipart &amp;&amp; argType == FileItem.class) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            String name = StringKit.isBlank(multipart.value()) ? paramName : multipart.value();</span>
+<span class="nc" id="L145">            return request.fileItem(name).orElse(null);</span>
+        }
+<span class="nc" id="L147">        return null;</span>
+    }
+
+    private static Object getBodyParam(ParamStruct paramStruct) {
+<span class="nc" id="L151">        Type argType = paramStruct.argType;</span>
+<span class="nc" id="L152">        Request request = paramStruct.request;</span>
+
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (ReflectKit.isPrimitive(argType)) {</span>
+<span class="nc" id="L155">            return ReflectKit.convert(argType, request.bodyToString());</span>
+        } else {
+<span class="nc" id="L157">            String json = request.bodyToString();</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">            if (String.class.equals(argType)) {</span>
+<span class="nc" id="L159">                return json;</span>
+            }
+<span class="nc bnc" id="L161" title="All 2 branches missed.">            return StringKit.isNotEmpty(json) ? JsonKit.fromJson(json, argType) : null;</span>
+        }
+    }
+
+    private static Object getQueryParam(ParamStruct paramStruct) {
+<span class="nc" id="L166">        Query query = paramStruct.query;</span>
+<span class="nc" id="L167">        Type argType = paramStruct.argType;</span>
+<span class="nc" id="L168">        Request request = paramStruct.request;</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        if (null == query) {</span>
+<span class="nc" id="L170">            return null;</span>
+        }
+
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        String name = StringKit.isBlank(query.name()) ? paramStruct.paramName : query.name();</span>
+
+<span class="nc bnc" id="L175" title="All 4 branches missed.">        if (ReflectKit.isBasicType(argType) || argType.equals(Date.class)</span>
+<span class="nc bnc" id="L176" title="All 4 branches missed.">                || argType.equals(BigDecimal.class) || argType.equals(LocalDate.class)</span>
+<span class="nc bnc" id="L177" title="All 6 branches missed.">                || argType.equals(LocalDateTime.class) || (argType instanceof Class &amp;&amp; ((Class) argType).isEnum())) {</span>
+
+<span class="nc" id="L179">            String value = request.query(name).orElseGet(() -&gt; getDefaultValue(query.defaultValue(), argType));</span>
+
+<span class="nc" id="L181">            return ReflectKit.convert(argType, value);</span>
+        } else {
+<span class="nc bnc" id="L183" title="All 2 branches missed.">            if (argType instanceof ParameterizedType) {</span>
+
+<span class="nc" id="L185">                List&lt;String&gt; values = request.queryParams().get(query.name());</span>
+<span class="nc" id="L186">                return getParameterizedTypeValues(values, argType);</span>
+            }
+<span class="nc" id="L188">            return parseModel(ReflectKit.typeToClass(argType), request, query.name());</span>
+        }
+    }
+
+    private static Object getFormParam(ParamStruct paramStruct) {
+<span class="nc" id="L193">        Form form = paramStruct.form;</span>
+<span class="nc" id="L194">        Type argType = paramStruct.argType;</span>
+<span class="nc" id="L195">        Request request = paramStruct.request;</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">        if (null == form) {</span>
+<span class="nc" id="L197">            return null;</span>
+        }
+
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        String name = StringKit.isBlank(form.name()) ? paramStruct.paramName : form.name();</span>
+
+<span class="nc bnc" id="L202" title="All 4 branches missed.">        if (ReflectKit.isBasicType(argType) || argType.equals(Date.class)</span>
+<span class="nc bnc" id="L203" title="All 4 branches missed.">                || argType.equals(BigDecimal.class) || argType.equals(LocalDate.class)</span>
+<span class="nc bnc" id="L204" title="All 6 branches missed.">                || argType.equals(LocalDateTime.class) || (argType instanceof Class &amp;&amp; ((Class) argType).isEnum())) {</span>
+
+<span class="nc" id="L206">            String value = request.form(name).orElseGet(() -&gt; getDefaultValue(form.defaultValue(), argType));</span>
+
+<span class="nc" id="L208">            return ReflectKit.convert(argType, value);</span>
+        } else {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            if (argType instanceof ParameterizedType) {</span>
+<span class="nc" id="L211">                List&lt;String&gt; values = request.formParams().get(form.name());</span>
+<span class="nc" id="L212">                return getParameterizedTypeValues(values, argType);</span>
+            }
+<span class="nc" id="L214">            return parseModel(ReflectKit.typeToClass(argType), request, form.name());</span>
+        }
+    }
+
+    private static String getDefaultValue(String defaultValue, Type argType) {
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        if (argType.equals(String.class)) {</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">            if (StringKit.isNotEmpty(defaultValue)) {</span>
+<span class="nc" id="L221">                return defaultValue;</span>
+            }
+<span class="nc" id="L223">            return null;</span>
+        }
+<span class="nc bnc" id="L225" title="All 4 branches missed.">        if (&quot;&quot;.equals(defaultValue) &amp;&amp; ReflectKit.isBasicType(argType)) {</span>
+
+<span class="nc bnc" id="L227" title="All 4 branches missed.">            if (argType.equals(int.class) || argType.equals(long.class)</span>
+<span class="nc bnc" id="L228" title="All 4 branches missed.">                    || argType.equals(double.class) || argType.equals(float.class)</span>
+<span class="nc bnc" id="L229" title="All 4 branches missed.">                    || argType.equals(short.class) || argType.equals(byte.class)) {</span>
+
+<span class="nc" id="L231">                return &quot;0&quot;;</span>
+            }
+
+<span class="nc bnc" id="L234" title="All 2 branches missed.">            if (argType.equals(boolean.class)) {</span>
+<span class="nc" id="L235">                return &quot;false&quot;;</span>
+            }
+<span class="nc" id="L237">            return &quot;&quot;;</span>
+        }
+<span class="nc" id="L239">        return defaultValue;</span>
+    }
+
+    private static Object getCookie(ParamStruct paramStruct) throws BladeException {
+<span class="nc" id="L243">        Type argType = paramStruct.argType;</span>
+<span class="nc" id="L244">        Cookie cookie = paramStruct.cookie;</span>
+<span class="nc" id="L245">        String paramName = paramStruct.paramName;</span>
+<span class="nc" id="L246">        Request request = paramStruct.request;</span>
+
+<span class="nc bnc" id="L248" title="All 2 branches missed.">        String cookieName = StringKit.isEmpty(cookie.value()) ? paramName : cookie.value();</span>
+<span class="nc" id="L249">        String val = request.cookie(cookieName);</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        if (null == val) {</span>
+<span class="nc" id="L251">            val = cookie.defaultValue();</span>
+        }
+<span class="nc" id="L253">        return ReflectKit.convert(argType, val);</span>
+    }
+
+    private static Object getHeader(ParamStruct paramStruct) throws BladeException {
+<span class="nc" id="L257">        Type argType = paramStruct.argType;</span>
+<span class="nc" id="L258">        Header header = paramStruct.header;</span>
+<span class="nc" id="L259">        String paramName = paramStruct.paramName;</span>
+<span class="nc" id="L260">        Request request = paramStruct.request;</span>
+
+<span class="nc bnc" id="L262" title="All 2 branches missed.">        String key = StringKit.isEmpty(header.value()) ? paramName : header.value();</span>
+<span class="nc" id="L263">        String val = request.header(key);</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">        if (StringKit.isBlank(val)) {</span>
+<span class="nc" id="L265">            val = header.defaultValue();</span>
+        }
+<span class="nc" id="L267">        return ReflectKit.convert(argType, val);</span>
+    }
+
+    private static Object getPathParam(ParamStruct paramStruct) {
+<span class="nc" id="L271">        Type argType = paramStruct.argType;</span>
+<span class="nc" id="L272">        PathParam pathParam = paramStruct.pathParam;</span>
+<span class="nc" id="L273">        String paramName = paramStruct.paramName;</span>
+<span class="nc" id="L274">        Request request = paramStruct.request;</span>
+
+<span class="nc bnc" id="L276" title="All 2 branches missed.">        String name = StringKit.isEmpty(pathParam.name()) ? paramName : pathParam.name();</span>
+<span class="nc" id="L277">        String val = request.pathString(name);</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        if (StringKit.isBlank(val)) {</span>
+<span class="nc" id="L279">            val = pathParam.defaultValue();</span>
+        }
+<span class="nc" id="L281">        return ReflectKit.convert(argType, val);</span>
+    }
+
+    public static &lt;T&gt; T parseModel(Class&lt;T&gt; argType, Request request, String name) {
+
+<span class="nc" id="L286">        T obj = ReflectKit.newInstance(argType);</span>
+
+<span class="nc" id="L288">        List&lt;Field&gt; fields = ReflectKit.loopFields(argType);</span>
+
+<span class="nc bnc" id="L290" title="All 2 branches missed.">        for (Field field : fields) {</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">            if (&quot;serialVersionUID&quot;.equals(field.getName())) {</span>
+<span class="nc" id="L292">                continue;</span>
+            }
+<span class="nc" id="L294">            Object value = null;</span>
+
+<span class="nc" id="L296">            Optional&lt;String&gt; fieldValue = request.query(field.getName());</span>
+
+<span class="nc bnc" id="L298" title="All 2 branches missed.">            if (StringKit.isNotBlank(name)) {</span>
+<span class="nc" id="L299">                String fieldName = name + &quot;[&quot; + field.getName() + &quot;]&quot;;</span>
+<span class="nc" id="L300">                fieldValue = request.query(fieldName);</span>
+            }
+
+<span class="nc bnc" id="L303" title="All 4 branches missed.">            if (fieldValue.isPresent() &amp;&amp; StringKit.isNotBlank(fieldValue.get())) {</span>
+<span class="nc" id="L304">                value = ReflectKit.convert(field.getType(), fieldValue.get());</span>
+            }
+<span class="nc bnc" id="L306" title="All 2 branches missed.">            if (null != value) {</span>
+<span class="nc" id="L307">                ReflectKit.setFieldValue(field, obj, value);</span>
+            }
+<span class="nc" id="L309">        }</span>
+<span class="nc" id="L310">        return obj;</span>
+    }
+
+    private static Object getParameterizedTypeValues(List&lt;String&gt; values, Type argType) {
+<span class="nc bnc" id="L314" title="All 4 branches missed.">        if (null == values || null == argType) {</span>
+<span class="nc" id="L315">            return null;</span>
+        }
+<span class="nc" id="L317">        ParameterizedType parameterizedType = (ParameterizedType) argType;</span>
+<span class="nc" id="L318">        Class&lt;?&gt; realType = (Class) parameterizedType.getActualTypeArguments()[0];</span>
+<span class="nc" id="L319">        return values.stream()</span>
+<span class="nc" id="L320">                .map(s -&gt; ReflectKit.convert(realType, s))</span>
+<span class="nc" id="L321">                .collect(Collectors.toList());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

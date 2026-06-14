@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClassDefine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.ioc.bean</a> &gt; <span class="el_source">ClassDefine.java</span></div><h1>ClassDefine.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.ioc.bean;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
+public final class ClassDefine {
+
+<span class="fc" id="L13">    private static final ConcurrentHashMap&lt;Class&lt;?&gt;, ClassDefine&gt; pool = new ConcurrentHashMap&lt;&gt;(128);</span>
+
+    private final Class&lt;?&gt; clazz;
+
+<span class="fc" id="L17">    private ClassDefine(Class&lt;?&gt; type) {</span>
+<span class="fc" id="L18">        this.clazz = type;</span>
+<span class="fc" id="L19">    }</span>
+
+    public static ClassDefine create(Class&lt;?&gt; clazz) {
+<span class="fc" id="L22">        ClassDefine classDefine = pool.get(clazz);</span>
+<span class="fc bfc" id="L23" title="All 2 branches covered.">        if (classDefine == null) {</span>
+<span class="fc" id="L24">            classDefine = new ClassDefine(clazz);</span>
+<span class="fc" id="L25">            ClassDefine old = pool.putIfAbsent(clazz, classDefine);</span>
+<span class="pc bpc" id="L26" title="1 of 2 branches missed.">            if (old != null) {</span>
+<span class="nc" id="L27">                classDefine = old;</span>
+            }
+        }
+<span class="fc" id="L30">        return classDefine;</span>
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public &lt;T&gt; Class&lt;T&gt; getType() {
+<span class="fc" id="L35">        return (Class&lt;T&gt;) clazz;</span>
+    }
+
+    public String getName() {
+<span class="fc" id="L39">        return clazz.getName();</span>
+    }
+
+    public String getSimpleName() {
+<span class="fc" id="L43">        return clazz.getSimpleName();</span>
+    }
+
+    public ClassDefine getSuperKlass() {
+<span class="fc" id="L47">        Class&lt;?&gt; superKlass = clazz.getSuperclass();</span>
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">        return (superKlass == null) ? null : ClassDefine.create(superKlass);</span>
+    }
+
+    public List&lt;ClassDefine&gt; getInterfaces() {
+<span class="fc" id="L52">        Class&lt;?&gt;[] interfaces = clazz.getInterfaces();</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (interfaces.length == 0) {</span>
+<span class="fc" id="L54">            return Collections.emptyList();</span>
+        }
+<span class="nc" id="L56">        List&lt;ClassDefine&gt; results = new ArrayList&lt;&gt;(interfaces.length);</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        for (Class&lt;?&gt; interface_ : interfaces) {</span>
+<span class="nc" id="L58">            results.add(ClassDefine.create(interface_));</span>
+        }
+<span class="nc" id="L60">        return results;</span>
+    }
+
+    public Annotation[] getAnnotations() {
+<span class="fc" id="L64">        return clazz.getAnnotations();</span>
+    }
+
+    public &lt;T extends Annotation&gt; T getAnnotation(Class&lt;T&gt; annotationClass) {
+<span class="fc" id="L68">        return clazz.getAnnotation(annotationClass);</span>
+    }
+
+    public Field[] getDeclaredFields() {
+<span class="fc" id="L72">        return clazz.getDeclaredFields();</span>
+    }
+
+    public int getModifiers() {
+<span class="fc" id="L76">        return clazz.getModifiers();</span>
+    }
+
+    public boolean isInterface() {
+<span class="nc" id="L80">        return Modifier.isInterface(getModifiers());</span>
+    }
+
+    public boolean isAbstract() {
+<span class="nc" id="L84">        return Modifier.isAbstract(getModifiers());</span>
+    }
+
+    public boolean isStatic() {
+<span class="nc" id="L88">        return Modifier.isStatic(getModifiers());</span>
+    }
+
+    public boolean isPrivate() {
+<span class="nc" id="L92">        return Modifier.isPrivate(getModifiers());</span>
+    }
+
+    public boolean isProtected() {
+<span class="nc" id="L96">        return Modifier.isProtected(getModifiers());</span>
+    }
+
+    public boolean isPublic() {
+<span class="nc" id="L100">        return Modifier.isPublic(getModifiers());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

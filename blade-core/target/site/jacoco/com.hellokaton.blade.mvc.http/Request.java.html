@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Request.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.http</a> &gt; <span class="el_source">Request.java</span></div><h1>Request.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.http;
+
+import com.hellokaton.blade.kit.JsonKit;
+import com.hellokaton.blade.kit.StringKit;
+import com.hellokaton.blade.kit.WebKit;
+import com.hellokaton.blade.mvc.HttpConst;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.handler.RouteActionArguments;
+import com.hellokaton.blade.mvc.multipart.FileItem;
+import io.netty.buffer.ByteBuf;
+import io.netty.util.CharsetUtil;
+import lombok.NonNull;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import static com.hellokaton.blade.kit.WebKit.UNKNOWN_MAGIC;
+
+/**
+ * Http Request
+ *
+ * @author biezhi
+ * 2017/5/31
+ */
+public interface Request {
+
+    /**
+     * init request path parameters
+     *
+     * @param pathParams path params
+     * @return Return request
+     */
+    Request initPathParams(Map&lt;String, String&gt; pathParams);
+
+    /**
+     * Get client host.
+     *
+     * @return Return client request host
+     */
+    String host();
+
+    /**
+     * Get client remote address. e.g: 102.331.234.11:38227
+     *
+     * @return Return client ip and port
+     */
+    String remoteAddress();
+
+    /**
+     * Get request uri
+     *
+     * @return Return request uri
+     */
+    String uri();
+
+    /**
+     * Get request url
+     *
+     * @return request url
+     */
+    String url();
+
+    /**
+     * Get request user-agent
+     *
+     * @return return user-agent
+     */
+    default String userAgent() {
+<span class="fc" id="L71">        return header(HttpConst.HEADER_USER_AGENT);</span>
+    }
+
+    /**
+     * Get request http protocol
+     *
+     * @return Return protocol
+     */
+    String protocol();
+
+    /**
+     * Get current application contextPath, default is &quot;/&quot;
+     *
+     * @return Return contextPath
+     */
+    default String contextPath() {
+<span class="fc" id="L87">        return WebContext.contextPath();</span>
+    }
+
+    /**
+     * Get current request Path params, like /users/:uid
+     *
+     * @return Return parameters on the path Map
+     */
+    Map&lt;String, String&gt; pathParams();
+
+    /**
+     * Get a URL parameter
+     *
+     * @param name Parameter name
+     * @return Return parameter value
+     */
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">    default String pathString(@NonNull String name) {</span>
+<span class="fc" id="L104">        return pathParams().get(name);</span>
+    }
+
+    /**
+     * Return a URL parameter for a Int type
+     *
+     * @param name Parameter name
+     * @return Return Int parameter value
+     */
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">    default Integer pathInt(@NonNull String name) {</span>
+<span class="fc" id="L114">        String val = pathString(name);</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        return StringKit.isNotEmpty(val) ? Integer.parseInt(val) : null;</span>
+    }
+
+    /**
+     * Return a URL parameter for a Long type
+     *
+     * @param name Parameter name
+     * @return Return Long parameter value
+     */
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">    default Long pathLong(@NonNull String name) {</span>
+<span class="fc" id="L125">        String val = pathString(name);</span>
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        return StringKit.isNotEmpty(val) ? Long.parseLong(val) : null;</span>
+    }
+
+    /**
+     * Get queryString. e.g: http://xxx.com/hello?name=a&amp;age=23
+     *
+     * @return Return query string
+     */
+    String queryString();
+
+    Map&lt;String, List&lt;String&gt;&gt; queryParams();
+
+    /**
+     * Get current request query parameters
+     *
+     * @return Return request query Map
+     */
+    Map&lt;String, List&lt;String&gt;&gt; formParams();
+
+    /**
+     * Get current request form parameter names
+     *
+     * @return Return request form names
+     * @since 2.0.8-RELEASE
+     */
+    Set&lt;String&gt; parameterNames();
+
+    /**
+     * Get current request query parameter values
+     *
+     * @param paramName param name
+     * @return Return request query values
+     * @since 2.0.8-RELEASE
+     */
+    List&lt;String&gt; formValue(String paramName);
+
+    /**
+     * Get a request parameter
+     *
+     * @param name Parameter name
+     * @return Return request parameter value
+     */
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">    default Optional&lt;String&gt; query(@NonNull String name) {</span>
+<span class="fc" id="L169">        List&lt;String&gt; values = queryParams().get(name);</span>
+<span class="pc bpc" id="L170" title="3 of 4 branches missed.">        if (null != values &amp;&amp; values.size() &gt; 0)</span>
+<span class="nc" id="L171">            return Optional.of(values.get(0));</span>
+<span class="fc" id="L172">        return Optional.empty();</span>
+    }
+
+    /**
+     * Get a request parameter
+     *
+     * @param name Parameter name
+     * @return Return request parameter value
+     */
+<span class="pc bpc" id="L181" title="1 of 2 branches missed.">    default Optional&lt;String&gt; form(@NonNull String name) {</span>
+<span class="fc" id="L182">        List&lt;String&gt; values = formParams().get(name);</span>
+<span class="pc bpc" id="L183" title="2 of 4 branches missed.">        if (null != values &amp;&amp; values.size() &gt; 0)</span>
+<span class="fc" id="L184">            return Optional.of(values.get(0));</span>
+<span class="nc" id="L185">        return Optional.empty();</span>
+    }
+
+    /**
+     * Get a request parameter, if NULL is returned to defaultValue
+     *
+     * @param name         parameter name
+     * @param defaultValue default String value
+     * @return Return request parameter values
+     */
+<span class="nc bnc" id="L195" title="All 4 branches missed.">    default String query(@NonNull String name, @NonNull String defaultValue) {</span>
+<span class="nc" id="L196">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L197">        return value.orElse(defaultValue);</span>
+    }
+
+<span class="nc bnc" id="L200" title="All 4 branches missed.">    default String form(@NonNull String name, @NonNull String defaultValue) {</span>
+<span class="nc" id="L201">        Optional&lt;String&gt; value = form(name);</span>
+<span class="nc" id="L202">        return value.orElse(defaultValue);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Int type
+     *
+     * @param name Parameter name
+     * @return Return Int parameter values
+     */
+<span class="nc bnc" id="L211" title="All 2 branches missed.">    default Optional&lt;Integer&gt; queryInt(@NonNull String name) {</span>
+<span class="nc" id="L212">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L213">        return value.map(Integer::parseInt);</span>
+    }
+
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">    default Optional&lt;Integer&gt; formInt(@NonNull String name) {</span>
+<span class="fc" id="L217">        Optional&lt;String&gt; value = form(name);</span>
+<span class="fc" id="L218">        return value.map(Integer::parseInt);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Int type
+     *
+     * @param name         Parameter name
+     * @param defaultValue default int value
+     * @return Return Int parameter values
+     */
+<span class="nc bnc" id="L228" title="All 2 branches missed.">    default int queryInt(@NonNull String name, int defaultValue) {</span>
+<span class="nc" id="L229">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L230">        return value.map(Integer::parseInt).orElse(defaultValue);</span>
+    }
+
+<span class="nc bnc" id="L233" title="All 2 branches missed.">    default int formInt(@NonNull String name, int defaultValue) {</span>
+<span class="nc" id="L234">        Optional&lt;String&gt; value = form(name);</span>
+<span class="nc" id="L235">        return value.map(Integer::parseInt).orElse(defaultValue);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Long type
+     *
+     * @param name Parameter name
+     * @return Return Long parameter values
+     */
+<span class="nc bnc" id="L244" title="All 2 branches missed.">    default Optional&lt;Long&gt; queryLong(@NonNull String name) {</span>
+<span class="nc" id="L245">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L246">        return value.map(Long::parseLong);</span>
+    }
+
+<span class="pc bpc" id="L249" title="1 of 2 branches missed.">    default Optional&lt;Long&gt; formLong(@NonNull String name) {</span>
+<span class="fc" id="L250">        Optional&lt;String&gt; value = form(name);</span>
+<span class="fc" id="L251">        return value.map(Long::parseLong);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Long type
+     *
+     * @param name         Parameter name
+     * @param defaultValue default long value
+     * @return Return Long parameter values
+     */
+<span class="nc bnc" id="L261" title="All 2 branches missed.">    default long queryLong(@NonNull String name, long defaultValue) {</span>
+<span class="nc" id="L262">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L263">        return value.map(Long::parseLong).orElse(defaultValue);</span>
+    }
+
+<span class="nc bnc" id="L266" title="All 2 branches missed.">    default long formLong(@NonNull String name, long defaultValue) {</span>
+<span class="nc" id="L267">        Optional&lt;String&gt; value = form(name);</span>
+<span class="nc" id="L268">        return value.map(Long::parseLong).orElse(defaultValue);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Double type
+     *
+     * @param name Parameter name
+     * @return Return Double parameter values
+     */
+<span class="nc bnc" id="L277" title="All 2 branches missed.">    default Optional&lt;Double&gt; queryDouble(@NonNull String name) {</span>
+<span class="nc" id="L278">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L279">        return value.map(Double::parseDouble);</span>
+    }
+
+<span class="pc bpc" id="L282" title="1 of 2 branches missed.">    default Optional&lt;Double&gt; formDouble(@NonNull String name) {</span>
+<span class="fc" id="L283">        Optional&lt;String&gt; value = form(name);</span>
+<span class="fc" id="L284">        return value.map(Double::parseDouble);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Double type
+     *
+     * @param name         Parameter name
+     * @param defaultValue default double value
+     * @return Return Double parameter values
+     */
+<span class="nc bnc" id="L294" title="All 2 branches missed.">    default double queryDouble(@NonNull String name, Double defaultValue) {</span>
+<span class="nc" id="L295">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L296">        return value.map(Double::parseDouble).orElse(defaultValue);</span>
+    }
+
+<span class="nc bnc" id="L299" title="All 2 branches missed.">    default double formDouble(@NonNull String name, Double defaultValue) {</span>
+<span class="nc" id="L300">        Optional&lt;String&gt; value = form(name);</span>
+<span class="nc" id="L301">        return value.map(Double::parseDouble).orElse(defaultValue);</span>
+    }
+
+<span class="nc bnc" id="L304" title="All 2 branches missed.">    default Optional&lt;Boolean&gt; queryBoolean(@NonNull String name) {</span>
+<span class="nc" id="L305">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L306">        return value.map(Boolean::valueOf);</span>
+    }
+
+<span class="nc bnc" id="L309" title="All 2 branches missed.">    default Optional&lt;Boolean&gt; formBoolean(@NonNull String name) {</span>
+<span class="nc" id="L310">        Optional&lt;String&gt; value = form(name);</span>
+<span class="nc" id="L311">        return value.map(Boolean::valueOf);</span>
+    }
+
+<span class="nc bnc" id="L314" title="All 2 branches missed.">    default boolean queryBoolean(@NonNull String name, Boolean defaultValue) {</span>
+<span class="nc" id="L315">        Optional&lt;String&gt; value = query(name);</span>
+<span class="nc" id="L316">        return value.map(Boolean::valueOf).orElse(defaultValue);</span>
+    }
+
+<span class="nc bnc" id="L319" title="All 2 branches missed.">    default boolean formBoolean(@NonNull String name, Boolean defaultValue) {</span>
+<span class="nc" id="L320">        Optional&lt;String&gt; value = form(name);</span>
+<span class="nc" id="L321">        return value.map(Boolean::valueOf).orElse(defaultValue);</span>
+    }
+
+    /**
+     * Get current request http method. e.g: GET
+     *
+     * @return Return request method
+     */
+    String method();
+
+    /**
+     * Get current request HttpMethod. e.g: HttpMethod.GET
+     *
+     * @return Return HttpMethod
+     */
+    HttpMethod httpMethod();
+
+    /**
+     * @return whether the current request is a compressed request of GZIP
+     * @since 2.0.9.BETA1
+     */
+    boolean useGZIP();
+
+    /**
+     * Get client ip address
+     *
+     * @return Return server remote address
+     */
+    default String address() {
+<span class="nc" id="L350">        String address = WebKit.ipAddress(this);</span>
+<span class="nc bnc" id="L351" title="All 4 branches missed.">        if (StringKit.isBlank(address) || UNKNOWN_MAGIC.equalsIgnoreCase(address)) {</span>
+<span class="nc" id="L352">            address = remoteAddress().split(&quot;:&quot;)[0];</span>
+        }
+<span class="nc bnc" id="L354" title="All 2 branches missed.">        if (StringKit.isBlank(address)) {</span>
+<span class="nc" id="L355">            address = &quot;Unknown&quot;;</span>
+        }
+<span class="nc" id="L357">        return address;</span>
+    }
+
+    /**
+     * Get current request session, if null then create
+     *
+     * @return Return current session
+     */
+    Session session();
+
+    /**
+     * Get current request contentType. e.g: &quot;text/html; charset=utf-8&quot;
+     *
+     * @return Return contentType
+     */
+    default String contentType() {
+<span class="nc" id="L373">        return header(HttpConst.HEADER_CONTENT_TYPE);</span>
+    }
+
+    /**
+     * Get current request is https.
+     *
+     * @return Return whether to use the SSL connection
+     */
+    boolean isSecure();
+
+    /**
+     * Get current request is ajax. According to the header &quot;x-requested-with&quot;
+     *
+     * @return Return current request is a AJAX request
+     */
+    default boolean isAjax() {
+<span class="pc bpc" id="L389" title="1 of 4 branches missed.">        return &quot;XMLHttpRequest&quot;.equals(header(&quot;X-Requested-With&quot;)) || &quot;XMLHttpRequest&quot;.equals(header(&quot;x-requested-with&quot;));</span>
+    }
+
+    /**
+     * Determine if this request is a json request
+     * &lt;p&gt;
+     * According to header content-type contains &quot;json&quot;
+     *
+     * @return is json request
+     */
+    default boolean isJsonRequest() {
+<span class="fc" id="L400">        return this.header(HttpConst.CONTENT_TYPE_JSON).toLowerCase().contains(&quot;json&quot;);</span>
+    }
+
+    /**
+     * Gets the current request is the head of the IE browser
+     *
+     * @return return current request is IE browser
+     */
+    default boolean isIE() {
+<span class="nc" id="L409">        String ua = userAgent();</span>
+<span class="nc bnc" id="L410" title="All 4 branches missed.">        return ua.contains(&quot;MSIE&quot;) || ua.contains(&quot;TRIDENT&quot;);</span>
+    }
+
+    /**
+     * Get current request cookies
+     *
+     * @return return cookies
+     */
+    Map&lt;String, Cookie&gt; cookies();
+
+    /**
+     * Get String Cookie Value
+     *
+     * @param name cookie name
+     * @return Return Cookie Value
+     */
+<span class="nc bnc" id="L426" title="All 2 branches missed.">    default String cookie(@NonNull String name) {</span>
+<span class="nc" id="L427">        Cookie cookie = cookies().get(name);</span>
+<span class="nc bnc" id="L428" title="All 2 branches missed.">        return null != cookie ? cookie.value() : null;</span>
+    }
+
+    /**
+     * Get raw cookie by cookie name
+     *
+     * @param name cookie name
+     * @return return Optional&lt;Cookie&gt;
+     */
+    Cookie cookieRaw(String name);
+
+    /**
+     * Get String Cookie Value
+     *
+     * @param name         cookie name
+     * @param defaultValue default cookie value
+     * @return Return Cookie Value
+     */
+<span class="nc bnc" id="L446" title="All 4 branches missed.">    default String cookie(@NonNull String name, @NonNull String defaultValue) {</span>
+<span class="nc" id="L447">        String cookie = cookie(name);</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">        return null != cookie ? cookie : defaultValue;</span>
+    }
+
+    /**
+     * Add a cookie to the request
+     *
+     * @param cookie cookie raw
+     * @return return Request instance
+     */
+    Request cookie(Cookie cookie);
+
+    /**
+     * Get current request headers.
+     *
+     * @return Return header information Map
+     */
+    Map&lt;String, List&lt;String&gt;&gt; headers();
+
+    /**
+     * Get header information
+     *
+     * @param name Parameter name
+     * @return Return header information
+     */
+<span class="pc bpc" id="L472" title="1 of 2 branches missed.">    default String header(@NonNull String name) {</span>
+<span class="fc" id="L473">        List&lt;String&gt; values = getHeader(name);</span>
+<span class="pc bpc" id="L474" title="1 of 4 branches missed.">        if (null != values &amp;&amp; values.size() &gt; 0) {</span>
+<span class="fc" id="L475">            return values.get(0);</span>
+        }
+<span class="fc" id="L477">        return &quot;&quot;;</span>
+    }
+
+<span class="pc bpc" id="L480" title="1 of 2 branches missed.">    default List&lt;String&gt; getHeader(@NonNull String name) {</span>
+<span class="fc" id="L481">        List&lt;String&gt; headerValues = headers().get(name);</span>
+<span class="pc bpc" id="L482" title="1 of 4 branches missed.">        if (null == headerValues || headerValues.isEmpty()) {</span>
+<span class="fc" id="L483">            headerValues = headers().get(name.toLowerCase());</span>
+        }
+<span class="fc" id="L485">        return headerValues;</span>
+    }
+
+    /**
+     * Get header information
+     *
+     * @param name         Parameter name
+     * @param defaultValue default header value
+     * @return Return header information
+     */
+<span class="nc bnc" id="L495" title="All 4 branches missed.">    default String header(@NonNull String name, @NonNull String defaultValue) {</span>
+<span class="nc" id="L496">        String value = header(name);</span>
+<span class="nc bnc" id="L497" title="All 2 branches missed.">        return value.length() &gt; 0 ? value : defaultValue;</span>
+    }
+
+    /**
+     * Get current request is KeepAlive, HTTP1.1 is true.
+     *
+     * @return return current request connection keepAlive
+     */
+    boolean keepAlive();
+
+    /**
+     * Bind form parameter to model
+     *
+     * @param modelClass model class type
+     * @param &lt;T&gt;
+     */
+    default &lt;T&gt; T bindWithForm(Class&lt;T&gt; modelClass) {
+<span class="nc" id="L514">        return RouteActionArguments.parseModel(modelClass, this, null);</span>
+    }
+
+    /**
+     * Bind body parameter to model
+     *
+     * @param modelClass model class type
+     * @param &lt;T&gt;
+     */
+    default &lt;T&gt; T bindWithBody(Class&lt;T&gt; modelClass) {
+<span class="nc" id="L524">        String json = this.bodyToString();</span>
+<span class="nc bnc" id="L525" title="All 2 branches missed.">        return StringKit.isNotEmpty(json) ? JsonKit.fromJson(json, modelClass) : null;</span>
+    }
+
+    /**
+     * Get current request attributes
+     *
+     * @return Return all Attribute in Request
+     */
+    Map&lt;String, Object&gt; attributes();
+
+    /**
+     * Setting Request Attribute
+     *
+     * @param name  attribute name
+     * @param value attribute Value
+     * @return set attribute value and return current request instance
+     */
+<span class="nc bnc" id="L542" title="All 2 branches missed.">    default Request attribute(@NonNull String name, Object value) {</span>
+<span class="nc" id="L543">        this.attributes().put(name, value);</span>
+<span class="nc" id="L544">        return this;</span>
+    }
+
+    /**
+     * Get a Request Attribute
+     *
+     * @param name Parameter name
+     * @return Return parameter value
+     */
+    default &lt;T&gt; T attribute(String name) {
+<span class="pc bpc" id="L554" title="1 of 2 branches missed.">        if (null == name) return null;</span>
+<span class="fc" id="L555">        Object object = attributes().get(name);</span>
+<span class="pc bpc" id="L556" title="1 of 2 branches missed.">        return null != object ? (T) object : null;</span>
+    }
+
+    /**
+     * Get current request all fileItems
+     *
+     * @return return request file items
+     */
+    Map&lt;String, FileItem&gt; fileItems();
+
+    /**
+     * get file item by request part name
+     *
+     * @param name
+     * @return return Optional&lt;FileItem&gt;
+     */
+<span class="pc bpc" id="L572" title="1 of 2 branches missed.">    default Optional&lt;FileItem&gt; fileItem(@NonNull String name) {</span>
+<span class="fc" id="L573">        return Optional.ofNullable(fileItems().get(name));</span>
+    }
+
+    boolean isMultipart();
+
+    /**
+     * Get current request body as ByteBuf
+     *
+     * @return Return request body
+     */
+    ByteBuf body();
+
+    /**
+     * Get current request body as string
+     *
+     * @return return request body to string
+     */
+    default String bodyToString() {
+<span class="nc" id="L591">        return this.body().toString(CharsetUtil.UTF_8);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

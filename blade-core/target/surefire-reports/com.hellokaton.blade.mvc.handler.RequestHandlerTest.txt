@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.hellokaton.blade.mvc.handler.RequestHandlerTest
+-------------------------------------------------------------------------------
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.263 s -- in com.hellokaton.blade.mvc.handler.RequestHandlerTest
