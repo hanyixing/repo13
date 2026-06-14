@@ -1,0 +1,616 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StaticFileHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.server</a> &gt; <span class="el_source">StaticFileHandler.java</span></div><h1>StaticFileHandler.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon nice (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.server;
+
+import com.hellokaton.blade.Blade;
+import com.hellokaton.blade.exception.ForbiddenException;
+import com.hellokaton.blade.exception.NotFoundException;
+import com.hellokaton.blade.kit.*;
+import com.hellokaton.blade.mvc.BladeConst;
+import com.hellokaton.blade.mvc.HttpConst;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.handler.RequestHandler;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.route.Route;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.DefaultFileRegion;
+import io.netty.handler.codec.http.*;
+import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.stream.ChunkedFile;
+import io.netty.util.CharsetUtil;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+
+import java.io.*;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLDecoder;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.regex.Pattern;
+
+import static com.hellokaton.blade.kit.BladeKit.*;
+import static com.hellokaton.blade.mvc.BladeConst.*;
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_0;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+import static java.util.stream.Collectors.toList;
+
+/**
+ * static file handler
+ *
+ * @author biezhi
+ * 2017/5/31
+ */
+<span class="nc" id="L69">@Slf4j</span>
+public class StaticFileHandler implements RequestHandler {
+
+    private static final String STYLE = &quot;body{background:#fff;margin:0;padding:30px;-webkit-font-smoothing:antialiased;font-family:Menlo,Consolas,monospace}main{max-width:920px}header{display:flex;justify-content:space-between}#toggle{display:none;cursor:pointer}#toggle:before{display:inline-block;content:url(\&quot;data:image/svg+xml; utf8, &lt;svg height='24px' version='1.1' viewBox='0 0 24 24' width='24px' xmlns='http://www.w3.org/2000/svg'&gt;&lt;g fill='none' fill-rule='evenodd' stroke='none' stroke-width='1'&gt;&lt;g transform='translate(-431.000000, -479.000000)'&gt;&lt;g transform='translate(215.000000, 119.000000)'/&gt;&lt;path d='M432,480 L432,486 L438,486 L438,480 L432,480 Z M440,480 L440,486 L446,486 L446,480 L440,480 Z M448,480 L448,486 L454,486 L454,480 L448,480 Z M449,481 L449,485 L453,485 L453,481 L449,481 Z M441,481 L441,485 L445,485 L445,481 L441,481 Z M433,481 L433,485 L437,485 L437,481 L433,481 Z M432,488 L432,494 L438,494 L438,488 L432,488 Z M440,488 L440,494 L446,494 L446,488 L440,488 Z M448,488 L448,494 L454,494 L454,488 L448,488 Z M449,489 L449,493 L453,493 L453,489 L449,489 Z M441,489 L441,493 L445,493 L445,489 L441,489 Z M433,489 L433,493 L437,493 L437,489 L433,489 Z M432,496 L432,502 L438,502 L438,496 L432,496 Z M440,496 L440,502 L446,502 L446,496 L440,496 Z M448,496 L448,502 L454,502 L454,496 L448,496 Z M449,497 L449,501 L453,501 L453,497 L449,497 Z M441,497 L441,501 L445,501 L445,497 L441,497 Z M433,497 L433,501 L437,501 L437,497 L433,497 Z' fill='#000000'/&gt;&lt;/g&gt;&lt;/g&gt;&lt;/svg&gt;\&quot;)}#toggle.single-column:before{content:url(\&quot;data:image/svg+xml; utf8, &lt;svg height='24px' viewBox='0 0 24 24' width='24px' xmlns='http://www.w3.org/2000/svg'&gt;&lt;g fill='none' fill-rule='evenodd' id='miu' stroke='none' stroke-width='1'&gt;&lt;g transform='translate(-359.000000, -479.000000)'&gt;&lt;g transform='translate(215.000000, 119.000000)'/&gt;&lt;path d='M360.577138,485 C360.258394,485 360,485.221932 360,485.5 C360,485.776142 360.262396,486 360.577138,486 L381.422862,486 C381.741606,486 382,485.778068 382,485.5 C382,485.223858 381.737604,485 381.422862,485 L360.577138,485 L360.577138,485 Z M360.577138,490 C360.258394,490 360,490.221932 360,490.5 C360,490.776142 360.262396,491 360.577138,491 L381.422862,491 C381.741606,491 382,490.778068 382,490.5 C382,490.223858 381.737604,490 381.422862,490 L360.577138,490 L360.577138,490 Z M360.577138,495 C360.258394,495 360,495.221932 360,495.5 C360,495.776142 360.262396,496 360.577138,496 L381.422862,496 C381.741606,496 382,495.778068 382,495.5 C382,495.223858 381.737604,495 381.422862,495 L360.577138,495 L360.577138,495 Z' fill='#000000'/&gt;&lt;/g&gt;&lt;/g&gt;&lt;/svg&gt;\&quot;)}a{color:#1A00F2;text-decoration:none}h1{font-size:18px;font-weight:500;margin-top:0;color:#000;font-family:-apple-system,Helvetica;display:flex}h1 a{color:inherit;font-weight:700;border-bottom:1px dashed transparent}h1 a::after{content:'/'}h1 a:hover{color:#7d7d7d}h1 i{font-style:normal}ul{margin:0;padding:20px 0 0 0}ul.single-column{flex-direction:column}ul li{list-style:none;padding:10px 0;font-size:14px;display:flex;justify-content:space-between}ul li i{color:#9B9B9B;font-size:11px;display:block;font-style:normal;white-space:nowrap;padding-left:15px}ul a{color:#1A00F2;white-space:nowrap;overflow:hidden;display:block;text-overflow:ellipsis}ul a::before{content:url(\&quot;data:image/svg+xml; utf8, &lt;svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 64 64'&gt;&lt;g fill='transparent' stroke='currentColor' stroke-miterlimit='10'&gt;&lt;path stroke-width='4' d='M50.46 56H13.54V8h22.31a4.38 4.38 0 0 1 3.1 1.28l10.23 10.24a4.38 4.38 0 0 1 1.28 3.1z'/&gt;&lt;path stroke-width='2' d='M35.29 8.31v14.72h14.06'/&gt;&lt;/g&gt;&lt;/svg&gt;\&quot;);display:inline-block;vertical-align:middle;margin-right:10px}ul a:hover{color:#000}ul a[class=''] + i{display:none}ul a[class='']::before{content:url(\&quot;data:image/svg+xml; utf8, &lt;svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 64 64'&gt;&lt;path fill='transparent' stroke='currentColor' stroke-width='4' stroke-miterlimit='10' d='M56 53.71H8.17L8 21.06a2.13 2.13 0 0 1 2.13-2.13h2.33l2.13-4.28A4.78 4.78 0 0 1 18.87 12h9.65a4.78 4.78 0 0 1 4.28 2.65l2.13 4.28h17.36a3.55 3.55 0 0 1 3.55 3.55z'/&gt;&lt;/svg&gt;\&quot;)}ul a[class='gif']::before,ul a[class='jpg']::before,ul a[class='png']::before,ul a[class='svg']::before{content:url(\&quot;data:image/svg+xml; utf8, &lt;svg width='16' height='16' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'&gt;&lt;rect x='6' y='6' width='68' height='68' rx='5' ry='5'/&gt;&lt;circle cx='24' cy='24' r='8'/&gt;&lt;path d='M73 49L59 34 37 52M53 72L27 42 7 58'/&gt;&lt;/svg&gt;\&quot;);width:16px}@media (min-width:768px){#toggle{display:inline-block}ul{display:flex;flex-wrap:wrap}ul li{width:230px;padding-right:20px}ul.single-column li{width:auto}}@media (min-width:992px){body{padding:45px}h1{font-size:15px}ul li{font-size:13px;box-sizing:border-box;justify-content:flex-start}ul li:hover i{opacity:1}ul li i{font-size:10px;opacity:0;margin-left:10px;margin-top:3px;padding-left:0}}&quot;;
+
+<span class="nc" id="L74">    private static final Pattern ALLOWED_FILE_NAME = Pattern.compile(&quot;[^-._]?[^&lt;&gt;&amp;\&quot;]*&quot;);</span>
+
+    private static JarFile CACHE_JAR_FILE;
+
+    private final boolean showFileList;
+
+    /**
+     * default cache 30 days.
+     */
+    private final int staticFileCacheSeconds;
+
+<span class="nc" id="L85">    public StaticFileHandler(Blade blade) {</span>
+<span class="nc" id="L86">        this.showFileList = blade.environment().getBoolean(BladeConst.ENV_KEY_STATIC_LIST, false);</span>
+<span class="nc" id="L87">        this.staticFileCacheSeconds = blade.environment().getInt(BladeConst.ENV_KEY_STATIC_CACHE_SECONDS, 86400 * 30);</span>
+<span class="nc" id="L88">    }</span>
+
+    /**
+     * print static file to client
+     *
+     * @param webContext web context
+     */
+    @Override
+    public void handle(WebContext webContext) throws Exception {
+<span class="nc" id="L97">        Request request = webContext.getRequest();</span>
+
+<span class="nc" id="L99">        ChannelHandlerContext ctx = webContext.getChannelHandlerContext();</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        if (!HttpMethod.GET.name().equals(request.method())) {</span>
+<span class="nc" id="L101">            sendError(ctx, METHOD_NOT_ALLOWED);</span>
+<span class="nc" id="L102">            return;</span>
+        }
+
+<span class="nc" id="L105">        Instant start = Instant.now();</span>
+
+<span class="nc" id="L107">        String uri = request.attribute(REQUEST_TO_STATIC_ATTR);</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (null != uri) {</span>
+<span class="nc" id="L109">            Route route = webContext.getRoute();</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">            if (route.isWildcard()) {</span>
+<span class="nc" id="L111">                uri = uri + request.uri().replace(route.getRewritePath(), &quot;&quot;);</span>
+            }
+<span class="nc" id="L113">        } else {</span>
+<span class="nc" id="L114">            uri = URLDecoder.decode(request.uri(), &quot;UTF-8&quot;);</span>
+        }
+
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (FAVICON_PATH.equals(uri)) {</span>
+<span class="nc" id="L118">            String dir = WebContext.blade().getEnv(ENV_KEY_FAVICON_DIR, &quot;/static&quot;);</span>
+<span class="nc" id="L119">            uri = dir + uri;</span>
+        }
+
+<span class="nc" id="L122">        String method = StringKit.padRight(request.method(), 6);</span>
+<span class="nc" id="L123">        String cleanURL = getCleanURL(request, uri);</span>
+
+        // webjars
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (cleanURL.startsWith(BladeConst.WEB_JARS)) {</span>
+<span class="nc" id="L127">            InputStream input = getResourceStreamFromJar(uri);</span>
+<span class="nc" id="L128">            writeWithJarFile(request, ctx, uri, start, cleanURL, method, input);</span>
+<span class="nc" id="L129">            return;</span>
+        }
+
+        // jar file
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (BladeKit.runtimeIsJAR()) {</span>
+<span class="nc" id="L134">            InputStream input = StaticFileHandler.class.getResourceAsStream(cleanURL);</span>
+<span class="nc" id="L135">            writeWithJarFile(request, ctx, uri, start, cleanURL, method, input);</span>
+<span class="nc" id="L136">            return;</span>
+        }
+
+        // disk file
+<span class="nc" id="L140">        final String path = sanitizeUri(cleanURL);</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        if (path == null) {</span>
+<span class="nc" id="L142">            log403(log, method, uri);</span>
+<span class="nc" id="L143">            throw new ForbiddenException();</span>
+        }
+
+<span class="nc" id="L146">        File file = new File(path);</span>
+<span class="nc bnc" id="L147" title="All 4 branches missed.">        if (file.isHidden() || !file.exists()) {</span>
+            // gradle resources path
+<span class="nc" id="L149">            File resourcesDirectory = getGradleResourcesDirectory();</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            if (resourcesDirectory.isDirectory()) {</span>
+<span class="nc" id="L151">                file = new File(resourcesDirectory.getPath() + &quot;/&quot; + cleanURL.substring(1));</span>
+<span class="nc bnc" id="L152" title="All 4 branches missed.">                if (file.isHidden() || !file.exists()) {</span>
+<span class="nc" id="L153">                    throw new NotFoundException(uri);</span>
+                }
+            } else {
+<span class="nc" id="L156">                throw new NotFoundException(uri);</span>
+            }
+        }
+
+<span class="nc bnc" id="L160" title="All 4 branches missed.">        if (file.isDirectory() &amp;&amp; showFileList) {</span>
+<span class="nc" id="L161">            sendListing(ctx, uri, getFileMetas(file), cleanURL);</span>
+<span class="nc" id="L162">            return;</span>
+        }
+
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        if (!file.isFile()) {</span>
+<span class="nc" id="L166">            sendError(ctx, FORBIDDEN);</span>
+<span class="nc" id="L167">            return;</span>
+        }
+
+        // Cache Validation
+<span class="nc" id="L171">        String ifModifiedSince = request.header(HttpConst.HEADER_IF_MODIFIED_SINCE);</span>
+<span class="nc bnc" id="L172" title="All 4 branches missed.">        if (ifModifiedSince != null &amp;&amp; !ifModifiedSince.isEmpty()) {</span>
+<span class="nc" id="L173">            this.http304(request, ctx, file, ifModifiedSince);</span>
+<span class="nc" id="L174">            log304(log, method, uri);</span>
+<span class="nc" id="L175">            return;</span>
+        }
+
+<span class="nc" id="L178">        HttpResponse httpResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);</span>
+<span class="nc" id="L179">        setContentTypeHeader(httpResponse, file);</span>
+<span class="nc" id="L180">        setDateAndCacheHeaders(httpResponse, file);</span>
+
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (request.useGZIP()) {</span>
+<span class="nc" id="L183">            File output = new File(file.getPath() + &quot;.gz&quot;);</span>
+<span class="nc" id="L184">            IOKit.compressGZIP(file, output);</span>
+<span class="nc" id="L185">            file = output;</span>
+<span class="nc" id="L186">            setGzip(httpResponse);</span>
+        }
+
+        RandomAccessFile raf;
+        try {
+<span class="nc" id="L191">            raf = new RandomAccessFile(file, &quot;r&quot;);</span>
+<span class="nc" id="L192">        } catch (FileNotFoundException ignore) {</span>
+<span class="nc" id="L193">            sendError(ctx, NOT_FOUND);</span>
+<span class="nc" id="L194">            return;</span>
+<span class="nc" id="L195">        }</span>
+
+        long length;
+        try {
+<span class="nc" id="L199">            length = raf.length();</span>
+<span class="nc" id="L200">        } catch (IOException e) {</span>
+<span class="nc" id="L201">            log.error(&quot;Read file {} length error&quot;, file.getName(), e);</span>
+<span class="nc" id="L202">            sendError(ctx, INTERNAL_SERVER_ERROR);</span>
+<span class="nc" id="L203">            return;</span>
+<span class="nc" id="L204">        }</span>
+
+<span class="nc" id="L206">        httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH, length);</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        if (request.keepAlive()) {</span>
+<span class="nc" id="L208">            httpResponse.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);</span>
+        }
+
+        // Write the initial line and the header.
+<span class="nc" id="L212">        ctx.write(httpResponse);</span>
+
+        // Write the content.
+        ChannelFuture sendFileFuture;
+        ChannelFuture lastContentFuture;
+<span class="nc bnc" id="L217" title="All 2 branches missed.">        if (ctx.pipeline().get(SslHandler.class) == null) {</span>
+<span class="nc" id="L218">            sendFileFuture = ctx.write(</span>
+<span class="nc" id="L219">                    new DefaultFileRegion(raf.getChannel(), 0, length),</span>
+<span class="nc" id="L220">                    ctx.newProgressivePromise()</span>
+            );
+
+            // Write the end marker.
+<span class="nc" id="L224">            lastContentFuture = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);</span>
+
+        } else {
+<span class="nc" id="L227">            sendFileFuture = ctx.writeAndFlush(</span>
+                    new HttpChunkedInput(
+                            new ChunkedFile(raf, 0, length, 8192)
+                    ),
+<span class="nc" id="L231">                    ctx.newProgressivePromise());</span>
+            // HttpChunkedInput will write the end marker (LastHttpContent) for us.
+<span class="nc" id="L233">            lastContentFuture = sendFileFuture;</span>
+        }
+
+<span class="nc" id="L236">        ProgressiveFutureListener progressiveListener = ProgressiveFutureListener.create(file.getName(), raf.getChannel()).hideProgress();</span>
+<span class="nc" id="L237">        sendFileFuture.addListener(progressiveListener);</span>
+
+        // Decide whether to close the connection or not.
+<span class="nc bnc" id="L240" title="All 2 branches missed.">        if (!request.keepAlive()) {</span>
+<span class="nc" id="L241">            lastContentFuture.addListener(ChannelFutureListener.CLOSE);</span>
+        }
+<span class="nc" id="L243">        log200AndCost(log, start, method, uri);</span>
+<span class="nc" id="L244">    }</span>
+
+    private void http304(Request request, ChannelHandlerContext ctx,
+                         File file, String ifModifiedSince) throws ParseException {
+<span class="nc" id="L248">        SimpleDateFormat dateFormatter = new SimpleDateFormat(HTTP_DATE_FORMAT, Locale.US);</span>
+<span class="nc" id="L249">        Date ifModifiedSinceDate = dateFormatter.parse(ifModifiedSince);</span>
+
+        // Only compare up to the second because the datetime format we send to the client
+        // does not have milliseconds
+<span class="nc" id="L253">        long ifModifiedSinceDateSeconds = ifModifiedSinceDate.getTime() / 1000;</span>
+<span class="nc" id="L254">        long fileLastModifiedSeconds = file.lastModified() / 1000;</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">        if (ifModifiedSinceDateSeconds == fileLastModifiedSeconds) {</span>
+<span class="nc" id="L256">            this.sendNotModified(ctx, request);</span>
+        }
+<span class="nc" id="L258">    }</span>
+
+    private void sendNotModified(ChannelHandlerContext ctx, Request request) {
+<span class="nc" id="L261">        FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, NOT_MODIFIED, Unpooled.EMPTY_BUFFER);</span>
+<span class="nc" id="L262">        setDateHeader(response);</span>
+<span class="nc" id="L263">        sendAndCleanupConnection(ctx, request, response);</span>
+<span class="nc" id="L264">    }</span>
+
+    public static final String HTTP_DATE_GMT_TIMEZONE = &quot;GMT&quot;;
+
+    /**
+     * Sets the Date header for the HTTP response
+     *
+     * @param response HTTP response
+     */
+    private static void setDateHeader(FullHttpResponse response) {
+<span class="nc" id="L274">        SimpleDateFormat dateFormatter = new SimpleDateFormat(HTTP_DATE_FORMAT, Locale.US);</span>
+<span class="nc" id="L275">        dateFormatter.setTimeZone(TimeZone.getTimeZone(HTTP_DATE_GMT_TIMEZONE));</span>
+
+<span class="nc" id="L277">        Calendar time = new GregorianCalendar();</span>
+<span class="nc" id="L278">        response.headers().set(HttpHeaderNames.DATE, dateFormatter.format(time.getTime()));</span>
+<span class="nc" id="L279">    }</span>
+
+
+    /**
+     * If Keep-Alive is disabled, attaches &quot;Connection: close&quot; header to the response
+     * and closes the connection after the response being sent.
+     */
+    private void sendAndCleanupConnection(ChannelHandlerContext ctx, Request request, FullHttpResponse response) {
+<span class="nc" id="L287">        final boolean keepAlive = request.keepAlive();</span>
+<span class="nc" id="L288">        HttpUtil.setContentLength(response, response.content().readableBytes());</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        if (!keepAlive) {</span>
+            // We're going to close the connection as soon as the response is sent,
+            // so we should also make it clear for the client.
+<span class="nc" id="L292">            response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">        } else if (HTTP_1_0.text().equals(request.protocol())) {</span>
+<span class="nc" id="L294">            response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);</span>
+        }
+
+<span class="nc" id="L297">        ChannelFuture flushPromise = ctx.writeAndFlush(response);</span>
+
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        if (!keepAlive) {</span>
+            // Close the connection as soon as the response is sent.
+<span class="nc" id="L301">            flushPromise.addListener(ChannelFutureListener.CLOSE);</span>
+        }
+<span class="nc" id="L303">    }</span>
+
+    private List&lt;FileMeta&gt; getFileMetas(File file) {
+<span class="nc bnc" id="L306" title="All 6 branches missed.">        if (file.isHidden() || !file.canRead() || file.listFiles() == null) {</span>
+<span class="nc" id="L307">            return Collections.emptyList();</span>
+        }
+
+<span class="nc" id="L310">        return Arrays.stream(Objects.requireNonNull(file.listFiles()))</span>
+<span class="nc bnc" id="L311" title="All 4 branches missed.">                .filter(f -&gt; !f.isHidden() &amp;&amp; f.canRead())</span>
+<span class="nc" id="L312">                .map(FileMeta::buildByFile)</span>
+<span class="nc" id="L313">                .collect(toList());</span>
+    }
+
+    private File getGradleResourcesDirectory() {
+<span class="nc" id="L317">        return new File(new File(BladeConst.class.getResource(&quot;/&quot;).getPath()).getParent() + &quot;/resources&quot;);</span>
+    }
+
+    private String getCleanURL(Request request, String uri) {
+<span class="nc" id="L321">        uri = PathKit.cleanPath(uri.replaceFirst(request.contextPath(), &quot;/&quot;));</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">        if (uri.endsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L323">            uri = StringKit.stripEnd(uri, &quot;/&quot;);</span>
+        }
+<span class="nc" id="L325">        return uri;</span>
+    }
+
+    private InputStream getResourceStreamFromJar(String uri) {
+<span class="nc" id="L329">        return StaticFileHandler.class.getResourceAsStream(&quot;/META-INF/resources&quot; + uri);</span>
+    }
+
+    private URL getURLFromJar(String uri) {
+<span class="nc" id="L333">        return StaticFileHandler.class.getClassLoader().getResource(uri);</span>
+    }
+
+    private void writeWithJarFile(Request request, ChannelHandlerContext ctx,
+                                  String uri, Instant start,
+                                  String cleanUri, String method,
+                                  InputStream input) throws IOException {
+<span class="nc bnc" id="L340" title="All 2 branches missed.">        if (null == input) {</span>
+<span class="nc" id="L341">            throw new NotFoundException(uri);</span>
+        }
+<span class="nc bnc" id="L343" title="All 2 branches missed.">        if (writeJarResource(ctx, request, cleanUri, input)) {</span>
+<span class="nc" id="L344">            log200AndCost(log, start, method, uri);</span>
+        }
+<span class="nc" id="L346">    }</span>
+
+    private boolean writeJarResource(ChannelHandlerContext ctx, Request request,
+                                     String cleanUri, InputStream input) throws IOException {
+        try {
+<span class="nc" id="L351">            var staticInputStream = new StaticInputStream(input);</span>
+
+<span class="nc" id="L353">            int size = staticInputStream.size();</span>
+
+<span class="nc bnc" id="L355" title="All 2 branches missed.">            if (this.executeHttp304(ctx, request, size, -1)) {</span>
+<span class="nc" id="L356">                log304(log, request.method(), cleanUri);</span>
+<span class="nc" id="L357">                return false;</span>
+            }
+
+<span class="nc" id="L360">            FullHttpResponse httpResponse = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, OK, staticInputStream.asByteBuf());</span>
+
+<span class="nc" id="L362">            setDateAndCacheHeaders(httpResponse, null);</span>
+<span class="nc" id="L363">            String contentType = MimeTypeKit.parse(cleanUri);</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">            if (null != contentType) {</span>
+<span class="nc" id="L365">                httpResponse.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);</span>
+            }
+<span class="nc" id="L367">            httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH, size);</span>
+
+<span class="nc bnc" id="L369" title="All 2 branches missed.">            if (request.keepAlive()) {</span>
+<span class="nc" id="L370">                httpResponse.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);</span>
+            }
+            // Write the initial line and the header.
+<span class="nc" id="L373">            ctx.writeAndFlush(httpResponse);</span>
+<span class="nc" id="L374">            return true;</span>
+<span class="nc" id="L375">        } catch (NullPointerException e) {</span>
+<span class="nc" id="L376">            String jarPath = cleanUri.substring(1);</span>
+
+<span class="nc" id="L378">            URL dirURL = getURLFromJar(jarPath);</span>
+<span class="nc bnc" id="L379" title="All 4 branches missed.">            if (null != dirURL &amp;&amp; dirURL.getProtocol().equals(&quot;jar&quot;)) {</span>
+<span class="nc" id="L380">                List&lt;FileMeta&gt; listFiles = getResourceListing(dirURL, jarPath);</span>
+<span class="nc" id="L381">                sendListing(ctx, request.uri(), listFiles, cleanUri);</span>
+<span class="nc" id="L382">                return true;</span>
+            } else {
+<span class="nc" id="L384">                throw e;</span>
+            }
+<span class="nc" id="L386">        } catch (IOException e) {</span>
+<span class="nc" id="L387">            throw e;</span>
+        }
+    }
+
+    private boolean executeHttp304(ChannelHandlerContext ctx, Request request, long size, long lastModified) {
+<span class="nc" id="L392">        String ifModifiedSince = request.header(HttpConst.HEADER_IF_MODIFIED_SINCE);</span>
+
+<span class="nc bnc" id="L394" title="All 4 branches missed.">        if (StringKit.isNotEmpty(ifModifiedSince) &amp;&amp; staticFileCacheSeconds &gt; 0) {</span>
+
+<span class="nc" id="L396">            Date ifModifiedSinceDate = format(ifModifiedSince, HTTP_DATE_FORMAT);</span>
+
+            // Only compare up to the second because the datetime format we send to the client
+            // does not have milliseconds
+<span class="nc" id="L400">            long ifModifiedSinceDateSeconds = ifModifiedSinceDate.getTime() / 1000;</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">            if (ifModifiedSinceDateSeconds == lastModified / 1000) {</span>
+
+<span class="nc" id="L403">                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, NOT_MODIFIED);</span>
+
+<span class="nc" id="L405">                String contentType = MimeTypeKit.parse(request.uri());</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">                if (null != contentType) {</span>
+<span class="nc" id="L407">                    response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);</span>
+                }
+
+<span class="nc" id="L410">                response.headers().set(HttpHeaderNames.DATE, DateKit.gmtDate());</span>
+<span class="nc" id="L411">                response.headers().set(HttpHeaderNames.CONTENT_LENGTH, size);</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">                if (request.keepAlive()) {</span>
+<span class="nc" id="L413">                    response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);</span>
+                }
+                // Close the connection as soon as the error message is sent.
+<span class="nc" id="L416">                ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);</span>
+<span class="nc" id="L417">                return true;</span>
+            }
+        }
+<span class="nc" id="L420">        return false;</span>
+    }
+
+    public Date format(String date, String pattern) {
+<span class="nc" id="L424">        DateTimeFormatter fmt = DateTimeFormatter.ofPattern(pattern, Locale.US);</span>
+<span class="nc" id="L425">        LocalDateTime formatted = LocalDateTime.parse(date, fmt);</span>
+<span class="nc" id="L426">        Instant instant = formatted.atZone(ZoneId.systemDefault()).toInstant();</span>
+<span class="nc" id="L427">        return Date.from(instant);</span>
+    }
+
+    /**
+     * Sets the Date and Cache headers for the HTTP Response
+     *
+     * @param response    HTTP response
+     * @param fileToCache file to extract content type
+     */
+    private void setDateAndCacheHeaders(HttpResponse response, File fileToCache) {
+<span class="nc" id="L437">        SimpleDateFormat dateFormatter = new SimpleDateFormat(HTTP_DATE_FORMAT, Locale.US);</span>
+<span class="nc" id="L438">        dateFormatter.setTimeZone(TimeZone.getTimeZone(HTTP_DATE_GMT_TIMEZONE));</span>
+        // Date header
+<span class="nc" id="L440">        Calendar time = new GregorianCalendar();</span>
+<span class="nc" id="L441">        response.headers().set(HttpHeaderNames.DATE, dateFormatter.format(time.getTime()));</span>
+
+        // Add cache headers
+<span class="nc bnc" id="L444" title="All 2 branches missed.">        if (staticFileCacheSeconds &gt; 0) {</span>
+<span class="nc" id="L445">            time.add(Calendar.SECOND, staticFileCacheSeconds);</span>
+
+<span class="nc" id="L447">            response.headers().set(HttpHeaderNames.EXPIRES, dateFormatter.format(time.getTime()));</span>
+<span class="nc" id="L448">            response.headers().set(HttpHeaderNames.CACHE_CONTROL, &quot;private, max-age=&quot; + staticFileCacheSeconds);</span>
+<span class="nc" id="L449">            response.headers().set(</span>
+<span class="nc" id="L450">                    HttpHeaderNames.LAST_MODIFIED, dateFormatter.format(new Date(fileToCache.lastModified())));</span>
+        }
+<span class="nc" id="L452">    }</span>
+
+    List&lt;FileMeta&gt; getResourceListing(URL dirURL, String path) throws IOException {
+<span class="nc" id="L455">        List&lt;FileMeta&gt; listFiles = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">        if (null == CACHE_JAR_FILE) {</span>
+            //strip out only the JAR file
+<span class="nc" id="L458">            String jarPath = dirURL.getPath().substring(5, dirURL.getPath().indexOf(&quot;!&quot;));</span>
+<span class="nc" id="L459">            CACHE_JAR_FILE = new JarFile(URLDecoder.decode(jarPath, &quot;UTF-8&quot;));</span>
+        }
+
+<span class="nc" id="L462">        Enumeration&lt;JarEntry&gt; entries = CACHE_JAR_FILE.entries();</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">        while (entries.hasMoreElements()) {</span>
+<span class="nc" id="L464">            JarEntry jarEntry = entries.nextElement();</span>
+<span class="nc" id="L465">            String name = jarEntry.getName();</span>
+<span class="nc bnc" id="L466" title="All 4 branches missed.">            if (!name.startsWith(path) || name.equals(path + &quot;/&quot;)) {</span>
+<span class="nc" id="L467">                continue;</span>
+            }
+<span class="nc" id="L469">            FileMeta fileMeta = new FileMeta();</span>
+<span class="nc" id="L470">            fileMeta.name = name.substring(path.length() + 1);</span>
+<span class="nc" id="L471">            fileMeta.isDirectory = jarEntry.isDirectory();</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">            if (!fileMeta.isDirectory) {</span>
+<span class="nc" id="L473">                fileMeta.length = jarEntry.getSize();</span>
+            }
+<span class="nc" id="L475">            listFiles.add(fileMeta);</span>
+<span class="nc" id="L476">        }</span>
+<span class="nc" id="L477">        return listFiles;</span>
+    }
+
+<span class="nc" id="L480">    static class FileMeta {</span>
+        boolean isDirectory;
+        String name;
+        long length;
+
+        static FileMeta buildByFile(File f) {
+<span class="nc" id="L486">            FileMeta fileMeta = new FileMeta();</span>
+<span class="nc" id="L487">            fileMeta.name = f.getName();</span>
+<span class="nc" id="L488">            fileMeta.isDirectory = f.isDirectory();</span>
+<span class="nc bnc" id="L489" title="All 2 branches missed.">            if (f.isFile()) {</span>
+<span class="nc" id="L490">                fileMeta.length = f.length();</span>
+            }
+<span class="nc" id="L492">            return fileMeta;</span>
+        }
+    }
+
+    private static void sendListing(ChannelHandlerContext ctx, String uri, List&lt;FileMeta&gt; listFiles, String dirPath) {
+<span class="nc" id="L497">        var response = new DefaultFullHttpResponse(HTTP_1_1, OK);</span>
+<span class="nc" id="L498">        response.headers().set(HttpHeaderNames.CONTENT_TYPE, &quot;text/html; charset=UTF-8&quot;);</span>
+<span class="nc" id="L499">        StringBuilder buf = new StringBuilder()</span>
+<span class="nc" id="L500">                .append(&quot;&lt;!DOCTYPE html&gt;\r\n&quot;)</span>
+<span class="nc" id="L501">                .append(&quot;&lt;html&gt;&lt;head&gt;&quot;)</span>
+<span class="nc" id="L502">                .append(&quot;&lt;meta charset='utf-8' /&gt;&quot;)</span>
+<span class="nc" id="L503">                .append(&quot;&lt;meta name='viewport' content='width=device-width, initial-scale=1'&gt;&quot;)</span>
+<span class="nc" id="L504">                .append(&quot;&lt;title&gt;&quot;)</span>
+<span class="nc" id="L505">                .append(&quot;Files within: &quot;)</span>
+<span class="nc" id="L506">                .append(dirPath)</span>
+<span class="nc" id="L507">                .append(&quot;&lt;/title&gt;&lt;style&gt;&quot; + STYLE + &quot;&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&quot;)</span>
+<span class="nc" id="L508">                .append(&quot;&lt;main&gt;&lt;header&gt;&lt;h1&gt;&lt;i&gt;Index of&amp;nbsp;&lt;/i&gt;&quot;);</span>
+
+<span class="nc" id="L510">        String[] dirs = uri.split(&quot;/&quot;);</span>
+
+<span class="nc bnc" id="L512" title="All 2 branches missed.">        for (String s : dirs) {</span>
+<span class="nc bnc" id="L513" title="All 2 branches missed.">            if (StringKit.isEmpty(s)) {</span>
+<span class="nc" id="L514">                continue;</span>
+            }
+<span class="nc" id="L516">            String path = uri.substring(0, uri.indexOf(s) + s.length());</span>
+<span class="nc" id="L517">            buf.append(&quot;&lt;a href='&quot;).append(path).append(&quot;'&gt;&quot;).append(s).append(&quot;&lt;/a&gt;&quot;);</span>
+        }
+
+<span class="nc" id="L520">        buf.append(&quot;&lt;/h1&gt;&quot;);</span>
+<span class="nc" id="L521">        buf.append(&quot;&lt;a id='toggle' title='click to toggle the view'&gt;&lt;/a&gt;&quot;);</span>
+<span class="nc" id="L522">        buf.append(&quot;&lt;/header&gt;&quot;);</span>
+<span class="nc" id="L523">        buf.append(&quot;&lt;ul id='files' class='single-column'&gt;&quot;);</span>
+
+<span class="nc bnc" id="L525" title="All 2 branches missed.">        if (dirs.length &gt; 2) {</span>
+<span class="nc" id="L526">            String parent = uri.substring(0, uri.lastIndexOf(&quot;/&quot;));</span>
+<span class="nc" id="L527">            buf.append(&quot;&lt;li&gt;&lt;a href='&quot;).append(parent).append(&quot;' title='' class=''&gt;..&lt;i&gt;&lt;/i&gt;&lt;/li&gt;&quot;);</span>
+        }
+
+<span class="nc bnc" id="L530" title="All 2 branches missed.">        for (FileMeta f : listFiles) {</span>
+<span class="nc" id="L531">            String name = f.name;</span>
+<span class="nc bnc" id="L532" title="All 2 branches missed.">            if (!ALLOWED_FILE_NAME.matcher(name).matches()) {</span>
+<span class="nc" id="L533">                continue;</span>
+            }
+<span class="nc" id="L535">            String subPath = (uri + &quot;/&quot; + name).replace(&quot;//&quot;, &quot;/&quot;);</span>
+<span class="nc" id="L536">            buf.append(&quot;&lt;li&gt;&lt;a href='&quot;).append(subPath).append(&quot;' title='&quot;).append(name).append(&quot;'&quot;);</span>
+<span class="nc bnc" id="L537" title="All 2 branches missed.">            if (f.isDirectory) {</span>
+<span class="nc" id="L538">                buf.append(&quot; class=''&gt;&quot;);</span>
+<span class="nc" id="L539">                buf.append(name).append(&quot;&lt;i&gt;&lt;/i&gt;&lt;/li&gt;&quot;);</span>
+            } else {
+<span class="nc" id="L541">                buf.append(&quot; class='css'&gt;&quot;);</span>
+<span class="nc" id="L542">                String size = ConvertKit.byte2FitMemoryString(f.length);</span>
+<span class="nc" id="L543">                buf.append(name).append(&quot;&lt;/a&gt;&lt;i&gt;&quot;);</span>
+<span class="nc" id="L544">                buf.append(size).append(&quot;&lt;/i&gt;&lt;/li&gt;&quot;);</span>
+            }
+<span class="nc" id="L546">        }</span>
+<span class="nc" id="L547">        buf.append(&quot;&lt;/ul&gt;&quot;);</span>
+<span class="nc" id="L548">        buf.append(&quot;&lt;/main&gt;&quot;);</span>
+<span class="nc" id="L549">        buf.append(&quot;&lt;script type='text/javascript'&gt;&quot;);</span>
+<span class="nc" id="L550">        buf.append(&quot;(function() {&quot;);</span>
+<span class="nc" id="L551">        buf.append(&quot;toggle.addEventListener('click', function() {&quot;);</span>
+<span class="nc" id="L552">        buf.append(&quot;files.classList.toggle('single-column');&quot;);</span>
+<span class="nc" id="L553">        buf.append(&quot;toggle.classList.toggle('single-column');&quot;);</span>
+<span class="nc" id="L554">        buf.append(&quot;});&quot;);</span>
+<span class="nc" id="L555">        buf.append(&quot;})();&quot;);</span>
+<span class="nc" id="L556">        buf.append(&quot;&lt;/script&gt;&quot;);</span>
+<span class="nc" id="L557">        buf.append(&quot;&lt;/body&gt;&lt;/html&gt;&quot;);</span>
+
+<span class="nc" id="L559">        ByteBuf buffer = Unpooled.copiedBuffer(buf, CharsetUtil.UTF_8);</span>
+<span class="nc" id="L560">        response.content().writeBytes(buffer);</span>
+<span class="nc" id="L561">        buffer.release();</span>
+
+        // Close the connection as soon as the error message is sent.
+<span class="nc" id="L564">        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);</span>
+<span class="nc" id="L565">    }</span>
+
+    private static void sendError(ChannelHandlerContext ctx, HttpResponseStatus status) {
+<span class="nc" id="L568">        var response = new DefaultFullHttpResponse(HTTP_1_1, status,</span>
+<span class="nc" id="L569">                Unpooled.copiedBuffer(&quot;Failure: &quot; + status + &quot;\r\n&quot;, CharsetUtil.UTF_8));</span>
+
+<span class="nc" id="L571">        response.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpConst.CONTENT_TYPE_TEXT);</span>
+        // Close the connection as soon as the error message is sent.
+<span class="nc" id="L573">        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);</span>
+<span class="nc" id="L574">    }</span>
+
+<span class="nc" id="L576">    private static final Pattern INSECURE_URI = Pattern.compile(&quot;.*[&lt;&gt;&amp;\&quot;].*&quot;);</span>
+
+    private static String sanitizeUri(String uri) {
+<span class="nc bnc" id="L579" title="All 4 branches missed.">        if (uri.isEmpty() || uri.charAt(0) != NettyHttpConst.CHAR_SLASH) {</span>
+<span class="nc" id="L580">            return null;</span>
+        }
+        // Convert file separators.
+<span class="nc" id="L583">        uri = uri.replace(NettyHttpConst.CHAR_SLASH, File.separatorChar);</span>
+        // Simplistic dumb security check.
+        // You will have to do something serious in the production environment.
+<span class="nc bnc" id="L586" title="All 2 branches missed.">        if (uri.contains(File.separator + NettyHttpConst.CHAR_POINT) ||</span>
+<span class="nc bnc" id="L587" title="All 2 branches missed.">                uri.contains('.' + File.separator) ||</span>
+<span class="nc bnc" id="L588" title="All 4 branches missed.">                uri.charAt(0) == '.' || uri.charAt(uri.length() - 1) == '.' ||</span>
+<span class="nc bnc" id="L589" title="All 2 branches missed.">                INSECURE_URI.matcher(uri).matches()) {</span>
+<span class="nc" id="L590">            return null;</span>
+        }
+        // Maven resources path
+<span class="nc" id="L593">        String path = BladeConst.CLASSPATH + File.separator + uri.substring(1);</span>
+<span class="nc" id="L594">        return path.replace(&quot;//&quot;, &quot;/&quot;);</span>
+    }
+
+    /**
+     * Sets the content type header for the HTTP Response
+     *
+     * @param response HTTP response
+     * @param file     file to extract content type
+     */
+    private static void setContentTypeHeader(HttpResponse response, File file) {
+<span class="nc" id="L604">        String contentType = MimeTypeKit.parse(file.getName());</span>
+<span class="nc bnc" id="L605" title="All 2 branches missed.">        if (null == contentType) {</span>
+<span class="nc" id="L606">            contentType = URLConnection.guessContentTypeFromName(file.getName());</span>
+        }
+<span class="nc" id="L608">        response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);</span>
+<span class="nc" id="L609">    }</span>
+
+    private void setGzip(HttpResponse response) {
+<span class="nc" id="L612">        response.headers().set(HttpHeaderNames.CONTENT_ENCODING, HttpHeaderValues.GZIP);</span>
+<span class="nc" id="L613">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

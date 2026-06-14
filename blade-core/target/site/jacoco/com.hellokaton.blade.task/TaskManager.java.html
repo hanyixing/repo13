@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TaskManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.task</a> &gt; <span class="el_source">TaskManager.java</span></div><h1>TaskManager.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.task;
+
+import com.hellokaton.blade.task.cron.CronExecutorService;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static com.hellokaton.blade.kit.BladeKit.getStartedSymbol;
+
+/**
+ * Task Manager
+ * &lt;p&gt;
+ * Manages all tasks, including task thread pools and stops, adds, and gets a task.
+ *
+ * @author biezhi
+ * @date 2018/4/9
+ */
+<span class="nc" id="L37">@Slf4j</span>
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class TaskManager {
+
+<span class="nc" id="L41">    private final static Map&lt;String, Task&gt; TASK_MAP = new HashMap&lt;&gt;(8);</span>
+<span class="nc" id="L42">    private final static ReentrantReadWriteLock rrw = new ReentrantReadWriteLock();</span>
+<span class="nc" id="L43">    private final static Lock readLock = rrw.readLock();</span>
+<span class="nc" id="L44">    private final static Lock writeLock = rrw.writeLock();</span>
+
+    private static CronExecutorService cronExecutorService;
+
+    public static void init(CronExecutorService cronExecutorService) {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        if (null != TaskManager.cronExecutorService) {</span>
+<span class="nc" id="L50">            throw new RuntimeException(&quot;Don't re-initialize the task thread pool.&quot;);</span>
+        }
+<span class="nc" id="L52">        TaskManager.cronExecutorService = cronExecutorService;</span>
+<span class="nc" id="L53">        Runtime.getRuntime().addShutdownHook(new Thread(cronExecutorService::shutdown));</span>
+<span class="nc" id="L54">    }</span>
+
+    public static CronExecutorService getExecutorService() {
+<span class="nc" id="L57">        return cronExecutorService;</span>
+    }
+
+    public static void addTask(Task task) {
+<span class="nc" id="L61">        writeLock.lock();</span>
+        try {
+<span class="nc" id="L63">            TASK_MAP.put(task.getName(), task);</span>
+        } finally {
+<span class="nc" id="L65">            writeLock.unlock();</span>
+        }
+<span class="nc" id="L67">        log.info(&quot;{}Add task [{}]&quot;, getStartedSymbol(), task.getName());</span>
+<span class="nc" id="L68">    }</span>
+
+    public static List&lt;Task&gt; getTasks() {
+        Collection&lt;Task&gt; values;
+<span class="nc" id="L72">        readLock.lock();</span>
+        try {
+<span class="nc" id="L74">            values = Optional.ofNullable(TASK_MAP.values()).orElse(Collections.EMPTY_LIST);</span>
+        } finally {
+<span class="nc" id="L76">            readLock.unlock();</span>
+        }
+<span class="nc" id="L78">        return new ArrayList&lt;&gt;(values);</span>
+    }
+
+    public static Task getTask(String name) {
+<span class="nc" id="L82">        readLock.lock();</span>
+        try {
+<span class="nc" id="L84">            return TASK_MAP.get(name);</span>
+        } finally {
+<span class="nc" id="L86">            readLock.unlock();</span>
+        }
+
+    }
+
+    public static boolean stopTask(String name) {
+        Task task;
+<span class="nc" id="L93">        readLock.lock();</span>
+        try {
+<span class="nc" id="L95">            task = TASK_MAP.get(name);</span>
+        } finally {
+<span class="nc" id="L97">            readLock.unlock();</span>
+        }
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        return task == null ? Boolean.FALSE : task.stop();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

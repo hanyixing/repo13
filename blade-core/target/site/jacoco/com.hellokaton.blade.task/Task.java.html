@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Task.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.task</a> &gt; <span class="el_source">Task.java</span></div><h1>Task.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.task;
+
+import com.hellokaton.blade.task.cron.CronExpression;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+
+import java.util.concurrent.ScheduledFuture;
+
+import static com.hellokaton.blade.kit.BladeKit.getStartedSymbol;
+
+/**
+ * Task
+ * &lt;p&gt;
+ * Save the name of the task, the code block that is actually executed, the cron expression,
+ * and the information that is deferred.
+ * &lt;p&gt;
+ * It provides a stop method to stop yourself, at this point the task thread will stop and the execution will stop.
+ *
+ * @author biezhi
+ * @date 2018/4/9
+ */
+<span class="nc bnc" id="L38" title="All 44 branches missed.">@Data</span>
+<span class="nc" id="L39">@Slf4j</span>
+public class Task {
+
+<span class="nc" id="L42">    private          String             name;</span>
+<span class="nc" id="L43">    private          Runnable           task;</span>
+<span class="nc" id="L44">    private          ScheduledFuture&lt;?&gt; future;</span>
+<span class="nc" id="L45">    private          CronExpression     cronExpression;</span>
+<span class="nc" id="L46">    private volatile boolean            isRunning = true;</span>
+<span class="nc" id="L47">    private          long               delay;</span>
+
+<span class="nc" id="L49">    public Task(String name, CronExpression cronExpression, long delay) {</span>
+<span class="nc" id="L50">        this.name = name;</span>
+<span class="nc" id="L51">        this.cronExpression = cronExpression;</span>
+<span class="nc" id="L52">        this.delay = delay;</span>
+<span class="nc" id="L53">    }</span>
+
+    public boolean stop() {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (!isRunning) {</span>
+<span class="nc" id="L57">            return true;</span>
+        }
+<span class="nc" id="L59">        isRunning = false;</span>
+<span class="nc" id="L60">        var flag = future.cancel(true);</span>
+<span class="nc" id="L61">        log.info(&quot;{}Task [{}] stoped&quot;, getStartedSymbol(), name);</span>
+<span class="nc" id="L62">        return flag;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

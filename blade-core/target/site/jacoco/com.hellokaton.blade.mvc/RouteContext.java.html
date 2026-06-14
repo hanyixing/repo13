@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RouteContext.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc</a> &gt; <span class="el_source">RouteContext.java</span></div><h1>RouteContext.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.mvc;
+
+import com.hellokaton.blade.mvc.http.Body;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.http.Response;
+import com.hellokaton.blade.mvc.http.Session;
+import com.hellokaton.blade.mvc.route.Route;
+import com.hellokaton.blade.mvc.ui.ModelAndView;
+import lombok.var;
+
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Map;
+
+import static com.hellokaton.blade.mvc.handler.RouteActionArguments.getRouteActionParameters;
+
+/**
+ * Integration of Request and Response operations
+ *
+ * @author biezhi
+ * @date 2018/6/21
+ * @see Request
+ * @see Response
+ * @since 2.0.9.ALPHA1
+ */
+public class RouteContext {
+
+    private Route route;
+    private Request request;
+    private Response response;
+    private Object[] routeActionParameters;
+    private boolean abort;
+
+    private static final String LAMBDA_IDENTIFY = &quot;$$Lambda$&quot;;
+
+<span class="nc" id="L51">    public RouteContext() {</span>
+<span class="nc" id="L52">    }</span>
+
+<span class="nc" id="L54">    public RouteContext(Request request, Response response) {</span>
+<span class="nc" id="L55">        this.request = request;</span>
+<span class="nc" id="L56">        this.response = response;</span>
+<span class="nc" id="L57">    }</span>
+
+    /**
+     * Get current request http method. e.g: GET
+     *
+     * @return Return request method
+     */
+    public String method() {
+<span class="nc" id="L65">        return this.request.method();</span>
+    }
+
+    /**
+     * Get request uri
+     *
+     * @return Return request uri
+     */
+    public String uri() {
+<span class="nc" id="L74">        return this.request.uri();</span>
+    }
+
+    /**
+     * Get current request is KeepAlive, HTTP1.1 is true.
+     *
+     * @return return current request connection keepAlive
+     */
+    public boolean keepAlive() {
+<span class="nc" id="L83">        return request.keepAlive();</span>
+    }
+
+    /**
+     * Get current request session, if null then create
+     *
+     * @return Return current session
+     */
+    public Session session() {
+<span class="nc" id="L92">        return this.request.session();</span>
+    }
+
+    /**
+     * Gets the current request is the head of the IE browser
+     *
+     * @return return current request is IE browser
+     */
+    public boolean isIE() {
+<span class="nc" id="L101">        return this.request.isIE();</span>
+    }
+
+    /**
+     * Get header information
+     *
+     * @param headerName Parameter name
+     * @return Return header information
+     */
+    public String header(String headerName) {
+<span class="nc" id="L111">        return this.request.header(headerName);</span>
+    }
+
+    /**
+     * Setting Request Attribute
+     *
+     * @param key   attribute name
+     * @param value attribute Value
+     * @return set attribute value and return current request instance
+     */
+    public RouteContext attribute(String key, Object value) {
+<span class="nc" id="L122">        this.request.attribute(key, value);</span>
+<span class="nc" id="L123">        return this;</span>
+    }
+
+    /**
+     * Get a request parameter
+     *
+     * @param paramName Parameter name
+     * @return Return request parameter value
+     */
+    public String query(String paramName) {
+<span class="nc" id="L133">        return this.request.query(paramName).orElse(null);</span>
+    }
+
+    /**
+     * Get a request parameter, if NULL is returned to defaultValue
+     *
+     * @param name         query name
+     * @param defaultValue default String value
+     * @return Return request parameter values
+     */
+    public String query(String name, String defaultValue) {
+<span class="nc" id="L144">        return this.request.query(name, defaultValue);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Int type
+     *
+     * @param name query name
+     * @return Return Int parameter values
+     */
+    public Integer queryInt(String name) {
+<span class="nc" id="L154">        return this.request.queryInt(name).orElse(null);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Int type
+     *
+     * @param name         query name
+     * @param defaultValue default int value
+     * @return Return Int parameter values
+     */
+    public Integer queryInt(String name, Integer defaultValue) {
+<span class="nc" id="L165">        return this.request.queryInt(name, defaultValue);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Long type
+     *
+     * @param name query name
+     * @return Return Long parameter values
+     */
+    public Long queryLong(String name) {
+<span class="nc" id="L175">        return this.request.queryLong(name).orElse(null);</span>
+    }
+
+    /**
+     * Returns a request parameter for a Long type
+     *
+     * @param name         query name
+     * @param defaultValue default long value
+     * @return Return Long parameter values
+     */
+    public Long queryLong(String name, Long defaultValue) {
+<span class="nc" id="L186">        return this.request.queryLong(name, defaultValue);</span>
+    }
+
+    public Double queryDouble(String name) {
+<span class="nc" id="L190">        return this.request.queryDouble(name, null);</span>
+    }
+
+    public Double queryDouble(String name, Double defaultValue) {
+<span class="nc" id="L194">        return this.request.queryDouble(name, defaultValue);</span>
+    }
+
+    public Boolean queryBoolean(String name) {
+<span class="nc" id="L198">        return this.request.queryBoolean(name, null);</span>
+    }
+
+    public Boolean queryBoolean(String name, Boolean defaultValue) {
+<span class="nc" id="L202">        return this.request.queryBoolean(name, defaultValue);</span>
+    }
+
+    /**
+     * Get path variable
+     *
+     * @param variable path variable name
+     * @return Return parameter value
+     */
+    public String pathString(String variable) {
+<span class="nc" id="L212">        return this.request.pathString(variable);</span>
+    }
+
+    /**
+     * Get path variable as Integer
+     *
+     * @param variable path variable name
+     * @return Return Int parameter value
+     */
+    public Integer pathInt(String variable) {
+<span class="nc" id="L222">        return this.request.pathInt(variable);</span>
+    }
+
+    /**
+     * Get path variable as Long
+     *
+     * @param variable path variable name
+     * @return Return Long parameter value
+     */
+    public Long pathLong(String variable) {
+<span class="nc" id="L232">        return this.request.pathLong(variable);</span>
+    }
+
+    /**
+     * request user-agent
+     *
+     * @return return user-agent
+     */
+    public String userAgent() {
+<span class="nc" id="L241">        return this.request.userAgent();</span>
+    }
+
+    /**
+     * client ip address
+     *
+     * e.g.
+     *
+     * @return Return server remote address
+     */
+    public String address() {
+<span class="nc" id="L252">        return this.request.address();</span>
+    }
+
+    /**
+     * Get client remote address. e.g: 102.331.234.11:38227
+     *
+     * @return Return client ip and port
+     */
+    public String remoteAddress() {
+<span class="nc" id="L261">        return this.request.remoteAddress();</span>
+    }
+
+    /**
+     * Get String Cookie Value
+     *
+     * @param name cookie name
+     * @return Return Cookie Value
+     */
+    public String cookie(String name) {
+<span class="nc" id="L271">        return this.request.cookie(name);</span>
+    }
+
+    /**
+     * Get current request headers.
+     *
+     * @return Return header information Map
+     */
+    public Map&lt;String, List&lt;String&gt;&gt; headers() {
+<span class="nc" id="L280">        return this.request.headers();</span>
+    }
+
+    /**
+     * Get current request query parameters
+     *
+     * @return Return request query Map
+     */
+    public Map&lt;String, List&lt;String&gt;&gt; parameters() {
+<span class="nc" id="L289">        return this.request.formParams();</span>
+    }
+
+    /**
+     * Get current request contentType. e.g: &quot;text/html; charset=utf-8&quot;
+     *
+     * @return Return contentType
+     */
+    public String contentType() {
+<span class="nc" id="L298">        return this.request.contentType();</span>
+    }
+
+    /**
+     * Get current request body as string
+     *
+     * @return return request body to string
+     */
+    public String bodyToString() {
+<span class="nc" id="L307">        return this.request.bodyToString();</span>
+    }
+
+    /**
+     * Get current response body
+     *
+     * @return {@link Body}
+     */
+    public Body body() {
+<span class="nc" id="L316">        return response.body();</span>
+    }
+
+    /**
+     * Setting Response ContentType
+     *
+     * @param contentType content type
+     * @return RouteContext
+     */
+    public RouteContext contentType(String contentType) {
+<span class="nc" id="L326">        this.response.contentType(contentType);</span>
+<span class="nc" id="L327">        return this;</span>
+    }
+
+    /**
+     * Setting Response Status
+     *
+     * @param statusCode status code
+     * @return RouteContext
+     */
+    public RouteContext status(int statusCode) {
+<span class="nc" id="L337">        this.response.status(statusCode);</span>
+<span class="nc" id="L338">        return this;</span>
+    }
+
+    /**
+     * Set current response header
+     *
+     * @param name  Header Name
+     * @param value Header Value
+     * @return RouteContext
+     */
+    public RouteContext header(String name, String value) {
+<span class="nc" id="L349">        this.response.header(name, value);</span>
+<span class="nc" id="L350">        return this;</span>
+    }
+
+    /**
+     * Set current response http code 400
+     *
+     * @return RouteContext
+     */
+    public RouteContext badRequest() {
+<span class="nc" id="L359">        this.response.badRequest();</span>
+<span class="nc" id="L360">        return this;</span>
+    }
+
+    /**
+     * Render view, can be modified after WebHook
+     *
+     * @param view view page
+     * @return RouteContext
+     */
+    public void render(String view) {
+<span class="nc" id="L370">        this.response.render(view);</span>
+<span class="nc" id="L371">    }</span>
+
+    /**
+     * Render view And Setting Data, can be modified after WebHook
+     *
+     * @param modelAndView ModelAndView object
+     * @return RouteContext
+     */
+    public void render(ModelAndView modelAndView) {
+<span class="nc" id="L380">        this.response.render(modelAndView);</span>
+<span class="nc" id="L381">    }</span>
+
+    /**
+     * Render by text
+     *
+     * @param text text content
+     * @return RouteContext
+     */
+    public void text(String text) {
+<span class="nc" id="L390">        this.response.text(text);</span>
+<span class="nc" id="L391">    }</span>
+
+    /**
+     * Render by json
+     *
+     * @param json json content
+     * @return RouteContext
+     */
+    public void json(String json) {
+<span class="nc" id="L400">        this.response.json(json);</span>
+<span class="nc" id="L401">    }</span>
+
+    /**
+     * Render by json
+     *
+     * @param bean bean instance
+     * @return RouteContext
+     */
+    public void json(Object bean) {
+<span class="nc" id="L410">        this.response.json(bean);</span>
+<span class="nc" id="L411">    }</span>
+
+    /**
+     * Render by html
+     *
+     * @param html html content
+     * @return RouteContext
+     */
+    public void html(String html) {
+<span class="nc" id="L420">        this.response.html(html);</span>
+<span class="nc" id="L421">    }</span>
+
+    /**
+     * Send body to client
+     *
+     * @param body {@link Body}
+     * @return RouteContext
+     */
+    public RouteContext body(Body body) {
+<span class="nc" id="L430">        this.response.body(body);</span>
+<span class="nc" id="L431">        return this;</span>
+    }
+
+    /**
+     * Add Cookie
+     *
+     * @param name  Cookie Name
+     * @param value Cookie Value
+     * @return Return Response
+     */
+    public RouteContext cookie(String name, String value) {
+<span class="nc" id="L442">        this.response.cookie(name, value);</span>
+<span class="nc" id="L443">        return this;</span>
+    }
+
+    /**
+     * Setting Cookie
+     *
+     * @param name   Cookie Name
+     * @param value  Cookie Value
+     * @param maxAge Period of validity
+     * @return Return Response
+     */
+    public RouteContext cookie(String name, String value, int maxAge) {
+<span class="nc" id="L455">        this.response.cookie(name, value, maxAge);</span>
+<span class="nc" id="L456">        return this;</span>
+    }
+
+    /**
+     * Redirect to newUri
+     *
+     * @param newUri new url
+     */
+    public void redirect(String newUri) {
+<span class="nc" id="L465">        this.response.redirect(newUri);</span>
+<span class="nc" id="L466">    }</span>
+
+    public boolean next() {
+<span class="nc" id="L469">        return true;</span>
+    }
+
+    /**
+     * Get response instance
+     *
+     * @return {@link Response}
+     */
+    public Response response() {
+<span class="nc" id="L478">        return this.response;</span>
+    }
+
+    /**
+     * Get request instance
+     *
+     * @return {@link Request}
+     */
+    public Request request() {
+<span class="nc" id="L487">        return this.request;</span>
+    }
+
+    /**
+     * Get current request route instance
+     *
+     * @return {@link Route}
+     */
+    public Route route() {
+<span class="nc" id="L496">        return this.route;</span>
+    }
+
+    /**
+     * Get current request route target type
+     *
+     * @return controller class type
+     */
+    public Class&lt;?&gt; targetType() {
+<span class="nc" id="L505">        return this.route.getTargetType();</span>
+    }
+
+    /**
+     * Get current request route target instance
+     *
+     * @return route target instance
+     */
+    public Object routeTarget() {
+<span class="nc" id="L514">        return this.route.getTarget();</span>
+    }
+
+    /**
+     * Get current request route method
+     *
+     * @return route logic method
+     */
+    public Method routeAction() {
+<span class="nc" id="L523">        return this.route.getAction();</span>
+    }
+
+    /**
+     * Get current route method parameters
+     *
+     * @return route method parameters
+     */
+    public Object[] routeParameters() {
+<span class="nc" id="L532">        return this.routeActionParameters;</span>
+    }
+
+    public void abort() {
+<span class="nc" id="L536">        this.abort = true;</span>
+<span class="nc" id="L537">    }</span>
+
+    public boolean isAbort() {
+<span class="nc" id="L540">        return this.abort;</span>
+    }
+
+    public void initRoute(Route route) {
+<span class="nc" id="L544">        this.request.initPathParams(route.getPathParams());</span>
+<span class="nc" id="L545">        this.route = route;</span>
+<span class="nc" id="L546">    }</span>
+
+    public void injectParameters() {
+<span class="nc" id="L549">        var action = routeAction();</span>
+<span class="nc bnc" id="L550" title="All 4 branches missed.">        if (null != action &amp;&amp; !action.getDeclaringClass().getName().contains(LAMBDA_IDENTIFY)) {</span>
+<span class="nc" id="L551">            this.routeActionParameters = getRouteActionParameters(this);</span>
+        }
+<span class="nc" id="L553">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

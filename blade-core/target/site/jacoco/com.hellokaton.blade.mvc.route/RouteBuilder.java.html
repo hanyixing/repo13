@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RouteBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.route</a> &gt; <span class="el_source">RouteBuilder.java</span></div><h1>RouteBuilder.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.route;
+
+import com.hellokaton.blade.annotation.Path;
+import com.hellokaton.blade.annotation.route.*;
+import com.hellokaton.blade.kit.BladeKit;
+import com.hellokaton.blade.kit.ReflectKit;
+import com.hellokaton.blade.mvc.RouteContext;
+import com.hellokaton.blade.mvc.http.HttpMethod;
+import com.hellokaton.blade.mvc.ui.ResponseType;
+import lombok.extern.slf4j.Slf4j;
+
+import java.lang.reflect.Method;
+
+/**
+ * Route builder
+ *
+ * @author &lt;a href=&quot;mailto:hellokaton@gmail.com&quot; target=&quot;_blank&quot;&gt;hellokaton&lt;/a&gt;
+ * @since 1.5
+ */
+<span class="nc" id="L20">@Slf4j</span>
+public class RouteBuilder {
+
+    private final RouteMatcher routeMatcher;
+
+<span class="nc" id="L25">    public RouteBuilder(RouteMatcher routeMatcher) {</span>
+<span class="nc" id="L26">        this.routeMatcher = routeMatcher;</span>
+<span class="nc" id="L27">    }</span>
+
+    public void addWebHook(final Class&lt;?&gt; webHook, String pattern) {
+<span class="nc" id="L30">        Method before = ReflectKit.getMethod(webHook, HttpMethod.BEFORE.name().toLowerCase(), RouteContext.class);</span>
+<span class="nc" id="L31">        Method after = ReflectKit.getMethod(webHook, HttpMethod.AFTER.name().toLowerCase(), RouteContext.class);</span>
+
+<span class="nc" id="L33">        routeMatcher.addRoute(Route.builder()</span>
+<span class="nc" id="L34">                .targetType(webHook)</span>
+<span class="nc" id="L35">                .action(before)</span>
+<span class="nc" id="L36">                .path(pattern)</span>
+<span class="nc" id="L37">                .httpMethod(HttpMethod.BEFORE)</span>
+<span class="nc" id="L38">                .build());</span>
+
+<span class="nc" id="L40">        routeMatcher.addRoute(Route.builder()</span>
+<span class="nc" id="L41">                .targetType(webHook)</span>
+<span class="nc" id="L42">                .action(after)</span>
+<span class="nc" id="L43">                .path(pattern)</span>
+<span class="nc" id="L44">                .httpMethod(HttpMethod.AFTER)</span>
+<span class="nc" id="L45">                .build());</span>
+<span class="nc" id="L46">    }</span>
+
+    /**
+     * Parse all routing in a controller
+     *
+     * @param routeType resolve the routing class,
+     *                  e.g RouteHandler.class or some controller class
+     */
+    public void addRouter(final Class&lt;?&gt; routeType, Object controller) {
+
+<span class="nc" id="L56">        Method[] methods = routeType.getDeclaredMethods();</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        if (BladeKit.isEmpty(methods)) {</span>
+<span class="nc" id="L58">            return;</span>
+        }
+
+<span class="nc" id="L61">        String nameSpace = null, suffix = null;</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (null != routeType.getAnnotation(Path.class)) {</span>
+<span class="nc" id="L63">            nameSpace = routeType.getAnnotation(Path.class).value();</span>
+<span class="nc" id="L64">            suffix = routeType.getAnnotation(Path.class).suffix();</span>
+        }
+
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (null == nameSpace) {</span>
+<span class="nc" id="L68">            log.warn(&quot;Route [{}] not path annotation&quot;, routeType.getName());</span>
+<span class="nc" id="L69">            return;</span>
+        }
+
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        for (Method method : methods) {</span>
+
+<span class="nc" id="L74">            ANY any = method.getAnnotation(ANY.class);</span>
+<span class="nc" id="L75">            GET get = method.getAnnotation(GET.class);</span>
+<span class="nc" id="L76">            POST post = method.getAnnotation(POST.class);</span>
+<span class="nc" id="L77">            PUT put = method.getAnnotation(PUT.class);</span>
+<span class="nc" id="L78">            DELETE delete = method.getAnnotation(DELETE.class);</span>
+
+<span class="nc" id="L80">            this.parseRoute(RouteStruct.builder().any(any)</span>
+<span class="nc" id="L81">                    .get(get).post(post)</span>
+<span class="nc" id="L82">                    .put(put).delete(delete)</span>
+<span class="nc" id="L83">                    .nameSpace(nameSpace)</span>
+<span class="nc" id="L84">                    .suffix(suffix).routeType(routeType)</span>
+<span class="nc" id="L85">                    .controller(controller).method(method)</span>
+<span class="nc" id="L86">                    .build());</span>
+        }
+<span class="nc" id="L88">    }</span>
+
+    private void parseRoute(RouteStruct routeStruct) {
+        // build multiple route
+<span class="nc" id="L92">        HttpMethod methodType = routeStruct.getMethod();</span>
+<span class="nc" id="L93">        ResponseType responseType = routeStruct.getResponseType();</span>
+<span class="nc" id="L94">        String[] paths = routeStruct.getPaths();</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (paths.length &lt;= 0) {</span>
+<span class="nc" id="L96">            return;</span>
+        }
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        for (String path : paths) {</span>
+<span class="nc" id="L99">            String pathV = getRoutePath(path, routeStruct.nameSpace, routeStruct.suffix);</span>
+
+<span class="nc" id="L101">            routeMatcher.addRoute(Route.builder()</span>
+<span class="nc" id="L102">                    .target(routeStruct.controller)</span>
+<span class="nc" id="L103">                    .targetType(routeStruct.routeType)</span>
+<span class="nc" id="L104">                    .action(routeStruct.method)</span>
+<span class="nc" id="L105">                    .path(pathV)</span>
+<span class="nc" id="L106">                    .httpMethod(methodType)</span>
+<span class="nc" id="L107">                    .responseType(responseType)</span>
+<span class="nc" id="L108">                    .build());</span>
+        }
+<span class="nc" id="L110">    }</span>
+
+    private String getRoutePath(String value, String nameSpace, String suffix) {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        String path = value.startsWith(&quot;/&quot;) ? value : &quot;/&quot; + value;</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        nameSpace = nameSpace.startsWith(&quot;/&quot;) ? nameSpace : &quot;/&quot; + nameSpace;</span>
+<span class="nc" id="L115">        path = nameSpace + path;</span>
+<span class="nc" id="L116">        path = path.replaceAll(&quot;[/]+&quot;, &quot;/&quot;);</span>
+<span class="nc bnc" id="L117" title="All 4 branches missed.">        path = path.length() &gt; 1 &amp;&amp; path.endsWith(&quot;/&quot;) ? path.substring(0, path.length() - 1) : path;</span>
+<span class="nc" id="L118">        path = path + suffix;</span>
+<span class="nc" id="L119">        return path;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DynamicContext.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.ioc</a> &gt; <span class="el_source">DynamicContext.java</span></div><h1>DynamicContext.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.ioc;
+
+import com.hellokaton.blade.ioc.bean.ClassInfo;
+import com.hellokaton.blade.ioc.bean.Scanner;
+import com.hellokaton.blade.ioc.reader.ClassPathClassReader;
+import com.hellokaton.blade.ioc.reader.JarReaderImpl;
+import com.hellokaton.blade.kit.StringKit;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.Set;
+import java.util.stream.Stream;
+
+/**
+ * Get ClassReader by JAR or folder
+ *
+ * @author &lt;a href=&quot;mailto:hellokaton@gmail.com&quot; target=&quot;_blank&quot;&gt;hellokaton&lt;/a&gt;
+ * @since 1.6.6
+ */
+<span class="nc" id="L22">@Slf4j</span>
+<span class="nc" id="L23">@NoArgsConstructor</span>
+public final class DynamicContext {
+
+<span class="nc" id="L26">    private static final ClassReader classpathReader = new ClassPathClassReader();</span>
+<span class="nc" id="L27">    private static final ClassReader jarReader       = new JarReaderImpl();</span>
+    private static final String      SUFFIX_JAR      = &quot;.jar&quot;;
+
+<span class="nc" id="L30">    private static boolean isJarContext = false;</span>
+
+    public static void init(Class&lt;?&gt; clazz) {
+<span class="nc" id="L33">        String rs = clazz.getResource(&quot;&quot;).toString();</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">        if (rs.contains(SUFFIX_JAR)) {</span>
+<span class="nc" id="L35">            isJarContext = true;</span>
+        }
+<span class="nc" id="L37">    }</span>
+
+    public static Stream&lt;ClassInfo&gt; recursionFindClasses(String packageName) {
+<span class="nc" id="L40">        Scanner        scanner    = Scanner.builder().packageName(packageName).recursive(true).build();</span>
+<span class="nc" id="L41">        Set&lt;ClassInfo&gt; classInfos = getClassReader(packageName).readClasses(scanner);</span>
+<span class="nc" id="L42">        return classInfos.stream();</span>
+    }
+
+    public static ClassReader getClassReader(String packageName) {
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        if (isJarPackage(packageName)) {</span>
+<span class="nc" id="L47">            return jarReader;</span>
+        }
+<span class="nc" id="L49">        return classpathReader;</span>
+    }
+
+    public static boolean isJarPackage(String packageName) {
+<span class="nc bnc" id="L53" title="All 2 branches missed.">        if (StringKit.isBlank(packageName)) {</span>
+<span class="nc" id="L54">            return false;</span>
+        }
+        try {
+<span class="nc" id="L57">            packageName = packageName.replace(&quot;.&quot;, &quot;/&quot;);</span>
+<span class="nc" id="L58">            Enumeration&lt;URL&gt; dirs = DynamicContext.class.getClassLoader().getResources(packageName);</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">            if (dirs.hasMoreElements()) {</span>
+<span class="nc" id="L60">                String url = dirs.nextElement().toString();</span>
+<span class="nc bnc" id="L61" title="All 4 branches missed.">                return url.indexOf(&quot;.jar!&quot;) != -1 || url.indexOf(&quot;.zip!&quot;) != -1;</span>
+            }
+<span class="nc" id="L63">        } catch (Exception e) {</span>
+<span class="nc" id="L64">            log.error(&quot;&quot;, e);</span>
+<span class="nc" id="L65">        }</span>
+<span class="nc" id="L66">        return false;</span>
+    }
+
+    public static boolean isJarContext() {
+<span class="nc" id="L70">        return isJarContext;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

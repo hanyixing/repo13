@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SimpleIoc.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.ioc</a> &gt; <span class="el_source">SimpleIoc.java</span></div><h1>SimpleIoc.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.ioc;
+
+import com.hellokaton.blade.ioc.bean.BeanDefine;
+import com.hellokaton.blade.kit.IocKit;
+import com.hellokaton.blade.mvc.WebContext;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * The default IOC container implementation
+ *
+ * @author &lt;a href=&quot;mailto:hellokaton@gmail.com&quot; target=&quot;_blank&quot;&gt;hellokaton&lt;/a&gt;
+ * @since 1.5
+ */
+<span class="fc" id="L17">@Slf4j</span>
+<span class="fc" id="L18">public class SimpleIoc implements Ioc {</span>
+
+<span class="fc" id="L20">    private final Map&lt;String, BeanDefine&gt; pool = new ConcurrentHashMap&lt;&gt;(32);</span>
+
+    /**
+     * Add user-defined objects
+     */
+    @Override
+    public void addBean(Object bean) {
+<span class="fc" id="L27">        addBean(bean.getClass().getName(), bean);</span>
+<span class="fc" id="L28">    }</span>
+
+    /**
+     * Add user-defined objects
+     */
+    @Override
+    public void addBean(String name, Object bean) {
+<span class="fc" id="L35">        BeanDefine beanDefine = new BeanDefine(bean);</span>
+<span class="fc" id="L36">        put(name, beanDefine);</span>
+        // add interface、put to pool
+<span class="fc" id="L38">        Class&lt;?&gt;[] interfaces = beanDefine.getType().getInterfaces();</span>
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">        if (interfaces.length &gt; 0) {</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">            for (Class&lt;?&gt; interfaceClazz : interfaces) {</span>
+<span class="fc" id="L41">                this.put(interfaceClazz.getName(), beanDefine);</span>
+            }
+        }
+<span class="fc" id="L44">    }</span>
+
+    /**
+     * Update BeanDefine
+     */
+    @Override
+    public void setBean(Class&lt;?&gt; type, Object proxyBean) {
+<span class="nc" id="L51">        BeanDefine beanDefine = pool.get(type.getName());</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (beanDefine != null) {</span>
+<span class="nc" id="L53">            beanDefine.setBean(proxyBean);</span>
+        } else {
+<span class="nc" id="L55">            beanDefine = new BeanDefine(proxyBean, type);</span>
+        }
+<span class="nc" id="L57">        pool.put(type.getName(), beanDefine);</span>
+<span class="nc" id="L58">    }</span>
+
+    /**
+     * Register @Bean marked objects
+     */
+    @Override
+    public &lt;T&gt; T addBean(Class&lt;T&gt; type) {
+<span class="fc" id="L65">        Object bean = put(type, true);</span>
+<span class="fc" id="L66">        return type.cast(bean);</span>
+    }
+
+    @Override
+    public Object createBean(Class&lt;?&gt; type) {
+<span class="nc" id="L71">        BeanDefine beanDefine = createBeanDefine(type, true);</span>
+<span class="nc" id="L72">        IocKit.initInjection(this, Objects.requireNonNull(beanDefine));</span>
+<span class="nc" id="L73">        IocKit.injectionValue(WebContext.blade().environment(), beanDefine);</span>
+<span class="nc" id="L74">        return beanDefine.getBean();</span>
+    }
+
+    @Override
+    public &lt;T&gt; T getBean(Class&lt;T&gt; type) {
+<span class="fc" id="L79">        Object bean = this.getBean(type.getName());</span>
+        try {
+<span class="fc" id="L81">            return type.cast(bean);</span>
+<span class="nc" id="L82">        } catch (Exception e) {</span>
+<span class="nc" id="L83">            log.error(&quot;get bean error&quot;, e);</span>
+        }
+<span class="nc" id="L85">        return null;</span>
+    }
+
+    @Override
+    public Object getBean(String name) {
+<span class="fc" id="L90">        BeanDefine beanDefine = pool.get(name);</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        if (beanDefine == null) {</span>
+<span class="fc" id="L92">            return null;</span>
+        }
+<span class="fc" id="L94">        return beanDefine.getBean();</span>
+    }
+
+    @Override
+    public List&lt;BeanDefine&gt; getBeanDefines() {
+<span class="nc" id="L99">        return new ArrayList&lt;&gt;(pool.values());</span>
+    }
+
+    @Override
+    public BeanDefine getBeanDefine(Class&lt;?&gt; type) {
+<span class="fc" id="L104">        return pool.get(type.getName());</span>
+    }
+
+    @Override
+    public List&lt;Object&gt; getBeans() {
+<span class="fc" id="L109">        Set&lt;String&gt;  beanNames = this.getBeanNames();</span>
+<span class="fc" id="L110">        List&lt;Object&gt; beans     = new ArrayList&lt;&gt;(beanNames.size());</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        for (String beanName : beanNames) {</span>
+<span class="fc" id="L112">            Object bean = this.getBean(beanName);</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">            if (null != bean) {</span>
+<span class="fc" id="L114">                beans.add(bean);</span>
+            }
+<span class="fc" id="L116">        }</span>
+<span class="fc" id="L117">        return beans;</span>
+    }
+
+    @Override
+    public Set&lt;String&gt; getBeanNames() {
+<span class="fc" id="L122">        return pool.keySet();</span>
+    }
+
+    @Override
+    public void remove(String beanName) {
+<span class="fc" id="L127">        pool.remove(beanName);</span>
+<span class="fc" id="L128">    }</span>
+
+    @Override
+    public void remove(Class&lt;?&gt; type) {
+<span class="nc" id="L132">        pool.remove(type.getSimpleName());</span>
+<span class="nc" id="L133">    }</span>
+
+    @Override
+    public void clearAll() {
+<span class="fc" id="L137">        pool.clear();</span>
+<span class="fc" id="L138">    }</span>
+
+    /**
+     * Add user-defined objects
+     */
+    private void put(String name, BeanDefine beanDefine) {
+<span class="fc bfc" id="L144" title="All 2 branches covered.">        if (pool.put(name, beanDefine) != null) {</span>
+<span class="fc" id="L145">            log.warn(&quot;Duplicated Bean: {}&quot;, name);</span>
+        }
+<span class="fc" id="L147">    }</span>
+
+    /**
+     * Register @Bean marked objects
+     */
+    private Object put(Class&lt;?&gt; type, boolean isSingleton) {
+<span class="fc" id="L153">        return put(type.getName(), type, isSingleton);</span>
+    }
+
+    /**
+     * Register @Bean marked objects
+     */
+    private Object put(String name, Class&lt;?&gt; beanClass, boolean isSingleton) {
+<span class="fc" id="L160">        BeanDefine beanDefine = this.createBeanDefine(beanClass, isSingleton);</span>
+
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">        if (pool.put(name, beanDefine) != null) {</span>
+<span class="nc" id="L163">            log.warn(&quot;Duplicated Bean: {}&quot;, name);</span>
+        }
+
+        // add interface、put to pool
+<span class="fc" id="L167">        Class&lt;?&gt;[] interfaces = beanClass.getInterfaces();</span>
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">        if (interfaces.length &gt; 0) {</span>
+<span class="fc bfc" id="L169" title="All 2 branches covered.">            for (Class&lt;?&gt; interfaceClazz : interfaces) {</span>
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">                if (null != this.getBean(interfaceClazz)) {</span>
+<span class="nc" id="L171">                    break;</span>
+                }
+<span class="fc" id="L173">                this.put(interfaceClazz.getName(), beanDefine);</span>
+            }
+        }
+
+<span class="fc" id="L177">        return Objects.requireNonNull(beanDefine).getBean();</span>
+    }
+
+    private BeanDefine createBeanDefine(Class&lt;?&gt; beanClass, boolean isSingleton) {
+        try {
+<span class="fc" id="L182">            Object object = beanClass.newInstance();</span>
+<span class="fc" id="L183">            return new BeanDefine(object, beanClass, isSingleton);</span>
+<span class="nc" id="L184">        } catch (InstantiationException | IllegalAccessException e) {</span>
+<span class="nc" id="L185">            log.error(&quot;get BeanDefine error&quot;, e);</span>
+        }
+<span class="nc" id="L187">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

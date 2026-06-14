@@ -1,0 +1,846 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Blade.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade</a> &gt; <span class="el_source">Blade.java</span></div><h1>Blade.java</h1><pre class="source lang-java linenums">/*
+  Copyright (c) 2022, katon (hellokaton@gmail.com)
+  &lt;p&gt;
+  Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  &lt;p&gt;
+  http://www.apache.org/licenses/LICENSE-2.0
+  &lt;p&gt;
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ */
+package com.hellokaton.blade;
+
+import com.hellokaton.blade.event.Event;
+import com.hellokaton.blade.event.EventManager;
+import com.hellokaton.blade.event.EventType;
+import com.hellokaton.blade.ioc.Ioc;
+import com.hellokaton.blade.ioc.SimpleIoc;
+import com.hellokaton.blade.kit.*;
+import com.hellokaton.blade.kit.reload.FileChangeDetector;
+import com.hellokaton.blade.loader.BladeLoader;
+import com.hellokaton.blade.mvc.BladeConst;
+import com.hellokaton.blade.mvc.handler.DefaultExceptionHandler;
+import com.hellokaton.blade.mvc.handler.ExceptionHandler;
+import com.hellokaton.blade.mvc.handler.RouteHandler;
+import com.hellokaton.blade.mvc.hook.WebHook;
+import com.hellokaton.blade.mvc.http.HttpMethod;
+import com.hellokaton.blade.mvc.http.session.SessionManager;
+import com.hellokaton.blade.mvc.route.RouteMatcher;
+import com.hellokaton.blade.mvc.ui.template.DefaultEngine;
+import com.hellokaton.blade.mvc.ui.template.TemplateEngine;
+import com.hellokaton.blade.options.CorsOptions;
+import com.hellokaton.blade.options.HttpOptions;
+import com.hellokaton.blade.options.StaticOptions;
+import com.hellokaton.blade.server.NettyServer;
+import com.hellokaton.blade.server.Server;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.net.BindException;
+import java.nio.file.*;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+import static com.hellokaton.blade.mvc.BladeConst.ENV_KEY_FAVICON_DIR;
+
+/**
+ * Blade Core
+ * &lt;p&gt;
+ * The Blade is the core operating class of the framework,
+ * which can be used to register routes,
+ * modify the template engine, set the file list display,
+ * static resource directory, and so on.
+ *
+ * @author hellokaton 2017/5/31
+ */
+<span class="nc" id="L67">@Slf4j</span>
+<span class="nc" id="L68">@NoArgsConstructor(access = AccessLevel.PRIVATE)</span>
+public class Blade {
+
+    /**
+     * Blade loader list, which stores all the actions that were performed before the project was started
+     */
+<span class="nc" id="L74">    private final List&lt;BladeLoader&gt; loaders = new ArrayList&lt;&gt;();</span>
+
+    /**
+     * All need to be scanned by the package, when you do not set the time will scan com.hellokaton.blade.plugin package
+     */
+<span class="nc" id="L79">    private final Set&lt;String&gt; packages = new LinkedHashSet&lt;&gt;(BladeConst.PLUGIN_PACKAGE_NAME);</span>
+
+    /**
+     * The default IOC container implementation
+     */
+<span class="nc" id="L84">    private final Ioc ioc = new SimpleIoc();</span>
+
+    /**
+     * The default template engine implementation, this is a very simple, generally not put into production
+     */
+<span class="nc" id="L89">    private TemplateEngine templateEngine = new DefaultEngine();</span>
+
+    /**
+     * Event manager, which manages all the guys that will trigger events
+     */
+<span class="nc" id="L94">    private final EventManager eventManager = new EventManager();</span>
+
+    /**
+     * Session manager, which manages session when you enable session
+     */
+<span class="nc" id="L99">    private SessionManager sessionManager = new SessionManager(eventManager);</span>
+
+    /**
+     * Used to wait for the start to complete the lock
+     */
+<span class="nc" id="L104">    private final CountDownLatch latch = new CountDownLatch(1);</span>
+
+    /**
+     * Web server implementation, currently only netty
+     */
+<span class="nc" id="L109">    private final Server server = new NettyServer();</span>
+
+    /**
+     * A route matcher that matches whether a route exists
+     */
+<span class="nc" id="L114">    private final RouteMatcher routeMatcher = new RouteMatcher();</span>
+
+<span class="nc" id="L116">    private CorsOptions corsOptions = null;</span>
+<span class="nc" id="L117">    private HttpOptions httpOptions = HttpOptions.create();</span>
+<span class="nc" id="L118">    private StaticOptions staticOptions = StaticOptions.create();</span>
+
+    /**
+     * Blade environment, which stores the parameters of the application.properties configuration file
+     */
+<span class="nc" id="L123">    private Environment environment = Environment.empty();</span>
+
+    /**
+     * Exception handling, it will output some logs when the error is initiated
+     */
+<span class="nc" id="L128">    private final Consumer&lt;Exception&gt; startupExceptionHandler = (e) -&gt; log.error(&quot;Start blade failed&quot;, e);</span>
+
+    /**
+     * Exception handler, default is DefaultExceptionHandler.
+     * &lt;p&gt;
+     * When you need to customize the handling of exceptions can be inherited from DefaultExceptionHandler
+     */
+<span class="nc" id="L135">    private ExceptionHandler exceptionHandler = new DefaultExceptionHandler();</span>
+
+    /**
+     * Used to identify whether the web server has started
+     */
+<span class="nc" id="L140">    private boolean started = false;</span>
+
+    /**
+     * Project main class, the main category is located in the root directory of the basic package,
+     * all the features will be in the sub-package below
+     */
+<span class="nc" id="L146">    private Class&lt;?&gt; bootClass = null;</span>
+
+    /**
+     * Blade app start banner, default is Const.BANNER
+     */
+    private String bannerText;
+
+    /**
+     * Blade app start thread name, default is Const.DEFAULT_THREAD_NAME
+     */
+    private String threadName;
+
+    /**
+     * Give your blade instance, from then on will get the energy
+     *
+     * @return return blade instance
+     */
+    public static Blade create() {
+<span class="nc" id="L164">        return new Blade();</span>
+    }
+
+    @Deprecated
+    public static Blade of() {
+<span class="nc" id="L169">        return create();</span>
+    }
+
+    /**
+     * Get blade ioc container, default is SimpleIoc implement.
+     * &lt;p&gt;
+     * IOC container will help you hosting Bean or component, it is actually a Map inside.
+     * In the blade in a single way to make objects reuse,
+     * you can save resources, to avoid the terrible memory leak
+     *
+     * @return return ioc container
+     */
+    public Ioc ioc() {
+<span class="nc" id="L182">        return this.ioc;</span>
+    }
+
+    /**
+     * Add a get route to routes
+     *
+     * @param path    your route path
+     * @param handler route implement
+     * @return blade instance
+     */
+<span class="nc bnc" id="L192" title="All 4 branches missed.">    public Blade get(@NonNull String path, @NonNull RouteHandler handler) {</span>
+<span class="nc" id="L193">        this.routeMatcher.addRoute(path, handler, HttpMethod.GET);</span>
+<span class="nc" id="L194">        return this;</span>
+    }
+
+    /**
+     * Add a post route to routes
+     *
+     * @param path    your route path
+     * @param handler route implement
+     * @return return blade instance
+     */
+<span class="nc bnc" id="L204" title="All 4 branches missed.">    public Blade post(@NonNull String path, @NonNull RouteHandler handler) {</span>
+<span class="nc" id="L205">        this.routeMatcher.addRoute(path, handler, HttpMethod.POST);</span>
+<span class="nc" id="L206">        return this;</span>
+    }
+
+    /**
+     * Add a put route to routes
+     *
+     * @param path    your route path
+     * @param handler route implement
+     * @return return blade instance
+     */
+<span class="nc bnc" id="L216" title="All 4 branches missed.">    public Blade put(@NonNull String path, @NonNull RouteHandler handler) {</span>
+<span class="nc" id="L217">        this.routeMatcher.addRoute(path, handler, HttpMethod.PUT);</span>
+<span class="nc" id="L218">        return this;</span>
+    }
+
+    /**
+     * Add a delete route to routes
+     *
+     * @param path    your route path
+     * @param handler route implement
+     * @return return blade instance
+     */
+<span class="nc bnc" id="L228" title="All 4 branches missed.">    public Blade delete(@NonNull String path, @NonNull RouteHandler handler) {</span>
+<span class="nc" id="L229">        this.routeMatcher.addRoute(path, handler, HttpMethod.DELETE);</span>
+<span class="nc" id="L230">        return this;</span>
+    }
+
+    /**
+     * Add a before route to routes, the before route will be executed before matching route
+     *
+     * @param path    your route path
+     * @param handler route implement
+     * @return return blade instance
+     */
+<span class="nc bnc" id="L240" title="All 4 branches missed.">    public Blade before(@NonNull String path, @NonNull RouteHandler handler) {</span>
+<span class="nc" id="L241">        this.routeMatcher.addRoute(path, handler, HttpMethod.BEFORE);</span>
+<span class="nc" id="L242">        return this;</span>
+    }
+
+    /**
+     * Add a after route to routes, the before route will be executed after matching route
+     *
+     * @param path    your route path
+     * @param handler route implement
+     * @return return blade instance
+     */
+<span class="nc bnc" id="L252" title="All 4 branches missed.">    public Blade after(@NonNull String path, @NonNull RouteHandler handler) {</span>
+<span class="nc" id="L253">        this.routeMatcher.addRoute(path, handler, HttpMethod.AFTER);</span>
+<span class="nc" id="L254">        return this;</span>
+    }
+
+    /**
+     * Setting blade mvc default templateEngine
+     *
+     * @param templateEngine TemplateEngine object
+     * @return blade instance
+     */
+<span class="nc bnc" id="L263" title="All 2 branches missed.">    public Blade templateEngine(@NonNull TemplateEngine templateEngine) {</span>
+<span class="nc" id="L264">        this.templateEngine = templateEngine;</span>
+<span class="nc" id="L265">        return this;</span>
+    }
+
+    /**
+     * Get TemplateEngine, default is DefaultEngine
+     *
+     * @return return TemplateEngine
+     */
+    public TemplateEngine templateEngine() {
+<span class="nc" id="L274">        return this.templateEngine;</span>
+    }
+
+    /**
+     * setting favicon dir, default is /static
+     *
+     * @param faviconDir favicon dir
+     * @return blade instance
+     */
+    public Blade faviconDir(String faviconDir) {
+<span class="nc" id="L284">        this.setEnv(ENV_KEY_FAVICON_DIR, faviconDir);</span>
+<span class="nc" id="L285">        return this;</span>
+    }
+
+    /**
+     * Get RouteMatcher
+     *
+     * @return return RouteMatcher
+     */
+    public RouteMatcher routeMatcher() {
+<span class="nc" id="L294">        return this.routeMatcher;</span>
+    }
+
+    public Blade http(Consumer&lt;HttpOptions&gt; consumer) {
+<span class="nc" id="L298">        consumer.accept(this.httpOptions);</span>
+<span class="nc" id="L299">        return this;</span>
+    }
+
+    public Blade http(HttpOptions httpOptions) {
+<span class="nc" id="L303">        this.httpOptions = httpOptions;</span>
+<span class="nc" id="L304">        return this;</span>
+    }
+
+    public Blade staticOptions(Consumer&lt;StaticOptions&gt; consumer) {
+<span class="nc" id="L308">        consumer.accept(this.staticOptions);</span>
+<span class="nc" id="L309">        return this;</span>
+    }
+
+    public Blade staticOptions(StaticOptions staticOptions) {
+<span class="nc" id="L313">        this.staticOptions = staticOptions;</span>
+<span class="nc" id="L314">        return this;</span>
+    }
+
+    public Blade cors(CorsOptions corsOptions) {
+<span class="nc" id="L318">        this.corsOptions = corsOptions;</span>
+<span class="nc" id="L319">        return this;</span>
+    }
+
+    public CorsOptions corsOptions() {
+<span class="nc" id="L323">        return this.corsOptions;</span>
+    }
+
+    public HttpOptions httpOptions() {
+<span class="nc" id="L327">        return this.httpOptions;</span>
+    }
+
+    public StaticOptions staticOptions() {
+<span class="nc" id="L331">        return this.staticOptions;</span>
+    }
+
+    /**
+     * Register bean to ioc container
+     *
+     * @param bean bean object
+     * @return blade
+     */
+<span class="nc bnc" id="L340" title="All 2 branches missed.">    public Blade register(@NonNull Object bean) {</span>
+<span class="nc" id="L341">        this.ioc.addBean(bean);</span>
+<span class="nc" id="L342">        return this;</span>
+    }
+
+    /**
+     * Register bean to ioc container
+     *
+     * @param cls bean class, the class must provide a no args constructor
+     * @return blade
+     */
+<span class="nc bnc" id="L351" title="All 2 branches missed.">    public Blade register(@NonNull Class&lt;?&gt; cls) {</span>
+<span class="nc" id="L352">        this.ioc.addBean(cls);</span>
+<span class="nc" id="L353">        return this;</span>
+    }
+
+    /**
+     * Get ioc bean
+     *
+     * @param cls bean class type
+     * @return return bean instance
+     */
+<span class="nc bnc" id="L362" title="All 2 branches missed.">    public &lt;T&gt; T getBean(@NonNull Class&lt;T&gt; cls) {</span>
+<span class="nc" id="L363">        return this.ioc.getBean(cls);</span>
+    }
+
+    /**
+     * Get ExceptionHandler
+     *
+     * @return return ExceptionHandler
+     */
+    public ExceptionHandler exceptionHandler() {
+<span class="nc" id="L372">        return this.exceptionHandler;</span>
+    }
+
+    /**
+     * Set ExceptionHandler, when you need a custom exception handling
+     *
+     * @param exceptionHandler your ExceptionHandler instance
+     * @return return blade instance
+     */
+    public Blade exceptionHandler(ExceptionHandler exceptionHandler) {
+<span class="nc" id="L382">        this.exceptionHandler = exceptionHandler;</span>
+<span class="nc" id="L383">        return this;</span>
+    }
+
+    /**
+     * Get current is developer mode
+     *
+     * @return return true is developer mode, else not.
+     */
+    public boolean devMode() {
+<span class="nc" id="L392">        return this.environment.getBoolean(BladeConst.ENV_KEY_DEV_MODE, true);</span>
+    }
+
+    /**
+     * Whether encoding setting mode for developers
+     * The default mode is developers
+     *
+     * @param devMode developer mode
+     * @return blade
+     */
+    public Blade devMode(boolean devMode) {
+<span class="nc" id="L403">        this.environment.set(BladeConst.ENV_KEY_DEV_MODE, devMode);</span>
+<span class="nc" id="L404">        return this;</span>
+    }
+
+    public boolean isAutoRefreshDir() {
+<span class="nc" id="L408">        return this.environment.get(BladeConst.ENV_KEY_AUTO_REFRESH_DIR).isPresent();</span>
+    }
+
+    public void setAutoRefreshDir(String dir) {
+<span class="nc" id="L412">        this.environment.set(BladeConst.ENV_KEY_AUTO_REFRESH_DIR, dir);</span>
+<span class="nc" id="L413">    }</span>
+
+    public Class&lt;?&gt; bootClass() {
+<span class="nc" id="L416">        return this.bootClass;</span>
+    }
+
+    /**
+     * When set to start blade scan packages
+     *
+     * @param packages package name
+     * @return blade
+     */
+<span class="nc bnc" id="L425" title="All 2 branches missed.">    public Blade scanPackages(@NonNull String... packages) {</span>
+<span class="nc" id="L426">        this.packages.addAll(Arrays.asList(packages));</span>
+<span class="nc" id="L427">        return this;</span>
+    }
+
+    /**
+     * Get scan the package set.
+     *
+     * @return return packages set
+     */
+    public Set&lt;String&gt; scanPackages() {
+<span class="nc" id="L436">        return packages;</span>
+    }
+
+    /**
+     * Set to start blade configuration file by default
+     * Boot config properties file in classpath directory.
+     * &lt;p&gt;
+     * Without setting will read the classpath -&gt; application.properties
+     *
+     * @param bootConf boot config file name
+     * @return blade
+     */
+<span class="nc bnc" id="L448" title="All 2 branches missed.">    public Blade bootConf(@NonNull String bootConf) {</span>
+<span class="nc" id="L449">        this.environment.set(BladeConst.ENV_KEY_BOOT_CONF, bootConf);</span>
+<span class="nc" id="L450">        return this;</span>
+    }
+
+    /**
+     * Return the application's environment configuration information.
+     *
+     * @return Environment
+     */
+    public Environment environment() {
+<span class="nc" id="L459">        return this.environment;</span>
+    }
+
+    public Blade environment(Environment environment) {
+<span class="nc" id="L463">        this.environment = environment;</span>
+<span class="nc" id="L464">        return this;</span>
+    }
+
+    /**
+     * Get application environment information.
+     *
+     * @param key environment key
+     * @return environment optional value
+     */
+    public Optional&lt;String&gt; getEnv(String key) {
+<span class="nc" id="L474">        return this.environment.get(key);</span>
+    }
+
+    /**
+     * Get application environment information.
+     *
+     * @param key          environment key
+     * @param defaultValue default value, if value is null
+     * @return environment optional value
+     */
+    public String getEnv(String key, String defaultValue) {
+<span class="nc" id="L485">        return this.environment.get(key, defaultValue);</span>
+    }
+
+    public Blade setEnv(String key, Object value) {
+<span class="nc" id="L489">        this.environment.set(key, value);</span>
+<span class="nc" id="L490">        return this;</span>
+    }
+
+    /**
+     * Set to start the web server to monitor port, the default is 9000
+     *
+     * @return blade
+     */
+    public Blade listen() {
+<span class="nc" id="L499">        return listen(BladeConst.DEFAULT_SERVER_PORT);</span>
+    }
+
+    /**
+     * Set to start the web server to monitor port, the default is 9000
+     *
+     * @param port web server port, default is 9000
+     * @return blade
+     */
+    public Blade listen(int port) {
+<span class="nc" id="L509">        Assert.greaterThan(port, 0, &quot;server port is not negative number.&quot;);</span>
+<span class="nc" id="L510">        this.environment.set(BladeConst.ENV_KEY_SERVER_PORT, port);</span>
+<span class="nc" id="L511">        return this;</span>
+    }
+
+    /**
+     * Set to start the web server to listen the IP address and port
+     * The default will listen 0.0.0.0:9000
+     *
+     * @param address ip address
+     * @param port    web server port
+     * @return blade
+     */
+<span class="nc bnc" id="L522" title="All 2 branches missed.">    public Blade listen(@NonNull String address, int port) {</span>
+<span class="nc" id="L523">        Assert.greaterThan(port, 0, &quot;server port is not negative number.&quot;);</span>
+<span class="nc" id="L524">        this.environment.set(BladeConst.ENV_KEY_SERVER_ADDRESS, address);</span>
+<span class="nc" id="L525">        this.environment.set(BladeConst.ENV_KEY_SERVER_PORT, port);</span>
+<span class="nc" id="L526">        return this;</span>
+    }
+
+    /**
+     * Use of multiple middleware
+     *
+     * @param middleware middleware array
+     * @return blade
+     */
+<span class="nc bnc" id="L535" title="All 2 branches missed.">    public Blade use(@NonNull WebHook... middleware) {</span>
+<span class="nc bnc" id="L536" title="All 2 branches missed.">        if (BladeKit.isEmpty(middleware)) {</span>
+<span class="nc" id="L537">            return this;</span>
+        }
+<span class="nc bnc" id="L539" title="All 2 branches missed.">        for (WebHook webHook : middleware) {</span>
+<span class="nc" id="L540">            this.routeMatcher.addMiddleware(webHook);</span>
+<span class="nc" id="L541">            this.register(webHook);</span>
+        }
+<span class="nc" id="L543">        return this;</span>
+    }
+
+    /**
+     * Add a event watcher
+     * When the trigger event is executed eventListener
+     *
+     * @param eventType     event type
+     * @param eventListener event watcher
+     * @return blade
+     */
+<span class="nc bnc" id="L554" title="All 4 branches missed.">    public Blade event(@NonNull EventType eventType, @NonNull com.hellokaton.blade.event.EventListener eventListener) {</span>
+<span class="nc" id="L555">        this.eventManager.addEventListener(eventType, eventListener);</span>
+<span class="nc" id="L556">        return this;</span>
+    }
+
+    /**
+     * Add a event watcher
+     * When the trigger event is executed eventListener
+     *
+     * @param eventType     event type
+     * @param eventListener event watcher
+     * @return blade
+     */
+<span class="nc bnc" id="L567" title="All 4 branches missed.">    public Blade on(@NonNull EventType eventType, @NonNull com.hellokaton.blade.event.EventListener eventListener) {</span>
+<span class="nc" id="L568">        this.eventManager.addEventListener(eventType, eventListener);</span>
+<span class="nc" id="L569">        return this;</span>
+    }
+
+    /**
+     * Add blade loader
+     *
+     * @param loader see {@link BladeLoader}
+     * @return Blade
+     */
+<span class="nc bnc" id="L578" title="All 2 branches missed.">    public Blade addLoader(@NonNull BladeLoader loader) {</span>
+<span class="nc" id="L579">        this.loaders.add(loader);</span>
+<span class="nc" id="L580">        return this;</span>
+    }
+
+    public List&lt;BladeLoader&gt; loaders() {
+<span class="nc" id="L584">        return this.loaders;</span>
+    }
+
+    /**
+     * Get EventManager
+     *
+     * @return return EventManager
+     */
+    public EventManager eventManager() {
+<span class="nc" id="L593">        return this.eventManager;</span>
+    }
+
+    /**
+     * Get SessionManager
+     *
+     * @return return SessionManager
+     */
+    public SessionManager sessionManager() {
+<span class="nc" id="L602">        return this.sessionManager;</span>
+    }
+
+    /**
+     * Disable session, default is open
+     *
+     * @return return blade instance
+     */
+    public Blade disableSession() {
+<span class="nc" id="L611">        this.sessionManager = null;</span>
+<span class="nc" id="L612">        return this;</span>
+    }
+
+    public Blade watchEnvChange(boolean watchEnvChange) {
+<span class="nc" id="L616">        this.environment.set(BladeConst.ENV_KEY_APP_WATCH_ENV, watchEnvChange);</span>
+<span class="nc" id="L617">        return this;</span>
+    }
+
+    /**
+     * Start blade application.
+     * &lt;p&gt;
+     * When all the routing in the main function of situations you can use,
+     * Otherwise please do not call this method.
+     *
+     * @return return blade instance
+     */
+    public Blade start(String... args) {
+<span class="nc" id="L629">        Class&lt;?&gt; caller = Arrays.stream(Thread.currentThread().getStackTrace())</span>
+<span class="nc" id="L630">                .filter(st -&gt; &quot;main&quot;.equals(st.getMethodName()))</span>
+<span class="nc" id="L631">                .findFirst()</span>
+<span class="nc" id="L632">                .map(StackTraceElement::getClassName)</span>
+<span class="nc" id="L633">                .map(UncheckedFnKit.function(Class::forName))</span>
+<span class="nc" id="L634">                .orElse(null);</span>
+<span class="nc" id="L635">        return this.start(caller, args);</span>
+    }
+
+    /**
+     * Start blade application
+     *
+     * @param mainCls main Class, the main class bag is basic package
+     * @param args    command arguments
+     * @return return blade instance
+     */
+    public Blade start(Class&lt;?&gt; mainCls, String... args) {
+        try {
+<span class="nc" id="L647">            this.loadConfig(args);</span>
+
+<span class="nc" id="L649">            this.bootClass = mainCls;</span>
+<span class="nc" id="L650">            eventManager.fireEvent(EventType.SERVER_STARTING, new Event().attribute(&quot;blade&quot;, this));</span>
+
+<span class="nc" id="L652">            Thread thread = new Thread(() -&gt; {</span>
+                try {
+<span class="nc" id="L654">                    server.start(Blade.this);</span>
+<span class="nc" id="L655">                    latch.countDown();</span>
+<span class="nc" id="L656">                    server.join();</span>
+<span class="nc" id="L657">                } catch (BindException e) {</span>
+<span class="nc" id="L658">                    log.error(&quot;Bind address error\n&quot;, e);</span>
+<span class="nc" id="L659">                    System.exit(0);</span>
+<span class="nc" id="L660">                } catch (Exception e) {</span>
+<span class="nc" id="L661">                    startupExceptionHandler.accept(e);</span>
+<span class="nc" id="L662">                }</span>
+<span class="nc" id="L663">            });</span>
+
+<span class="nc bnc" id="L665" title="All 2 branches missed.">            String threadName = null != this.threadName ? this.threadName : environment.get(BladeConst.ENV_KEY_APP_THREAD_NAME, null);</span>
+<span class="nc bnc" id="L666" title="All 2 branches missed.">            threadName = null != threadName ? threadName : BladeConst.DEFAULT_THREAD_NAME;</span>
+
+<span class="nc" id="L668">            thread.setName(threadName);</span>
+<span class="nc" id="L669">            thread.start();</span>
+
+<span class="nc" id="L671">            this.started = true;</span>
+
+<span class="nc" id="L673">            Thread resourceFilesRefreshThread = new Thread(() -&gt; {</span>
+                try {
+<span class="nc" id="L675">                    FileChangeDetector fileChangeDetector = new FileChangeDetector(environment.get(BladeConst.ENV_KEY_AUTO_REFRESH_DIR).get());</span>
+<span class="nc" id="L676">                    fileChangeDetector.processEvent((event, filePath) -&gt; {</span>
+                        try {
+                            //TODO: add support for Create and Delete
+<span class="nc bnc" id="L679" title="All 2 branches missed.">                            if (event.equals(StandardWatchEventKinds.ENTRY_MODIFY)) {</span>
+<span class="nc" id="L680">                                Path destPath = FileChangeDetector.getDestPath(filePath, environment, staticOptions);</span>
+<span class="nc" id="L681">                                Files.copy(filePath, Objects.requireNonNull(destPath), StandardCopyOption.REPLACE_EXISTING);</span>
+                            }
+<span class="nc" id="L683">                        } catch (IOException e) {</span>
+<span class="nc" id="L684">                            log.error(&quot;Exception when trying to copy updated file&quot;);</span>
+<span class="nc" id="L685">                            startupExceptionHandler.accept(e);</span>
+<span class="nc" id="L686">                        }</span>
+<span class="nc" id="L687">                    });</span>
+<span class="nc" id="L688">                } catch (IOException e) {</span>
+<span class="nc" id="L689">                    startupExceptionHandler.accept(e);</span>
+<span class="nc" id="L690">                }</span>
+<span class="nc" id="L691">            });</span>
+
+<span class="nc bnc" id="L693" title="All 4 branches missed.">            if (devMode() &amp;&amp; isAutoRefreshDir()) {</span>
+<span class="nc" id="L694">                log.info(&quot;auto refresh is enabled&quot;);</span>
+<span class="nc" id="L695">                resourceFilesRefreshThread.start();</span>
+            }
+<span class="nc" id="L697">        } catch (Exception e) {</span>
+<span class="nc" id="L698">            startupExceptionHandler.accept(e);</span>
+<span class="nc" id="L699">        }</span>
+<span class="nc" id="L700">        return this;</span>
+
+    }
+
+    /**
+     * Await web server started
+     *
+     * @return return blade instance
+     */
+    public Blade await() {
+<span class="nc bnc" id="L710" title="All 2 branches missed.">        if (!this.started) {</span>
+<span class="nc" id="L711">            throw new IllegalStateException(&quot;Server hasn't been started. Call start() before calling this method.&quot;);</span>
+        }
+        try {
+<span class="nc" id="L714">            this.latch.await();</span>
+<span class="nc" id="L715">        } catch (Exception e) {</span>
+<span class="nc" id="L716">            log.error(&quot;Blade start await error&quot;, e);</span>
+<span class="nc" id="L717">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L718">        }</span>
+<span class="nc" id="L719">        return this;</span>
+    }
+
+    /**
+     * Stop current blade application
+     * &lt;p&gt;
+     * Will stop synchronization waiting netty service
+     */
+    public void stop() {
+<span class="nc" id="L728">        this.eventManager.fireEvent(EventType.SERVER_STOPPING, new Event().attribute(&quot;blade&quot;, this));</span>
+<span class="nc" id="L729">        this.server.stopAndWait();</span>
+<span class="nc" id="L730">        this.eventManager.fireEvent(EventType.SERVER_STOPPED, new Event().attribute(&quot;blade&quot;, this));</span>
+<span class="nc" id="L731">    }</span>
+
+    /**
+     * Set blade start banner text
+     *
+     * @param bannerText banner text
+     * @return return blade instance
+     */
+    public Blade bannerText(String bannerText) {
+<span class="nc" id="L740">        this.bannerText = bannerText;</span>
+<span class="nc" id="L741">        return this;</span>
+    }
+
+    /**
+     * Get banner text
+     *
+     * @return return blade start banner text
+     */
+    public String bannerText() {
+<span class="nc bnc" id="L750" title="All 2 branches missed.">        if (null != bannerText) return bannerText;</span>
+<span class="nc" id="L751">        String bannerPath = environment.get(BladeConst.ENV_KEY_BANNER_PATH, null);</span>
+
+<span class="nc bnc" id="L753" title="All 4 branches missed.">        if (StringKit.isEmpty(bannerPath) || Files.notExists(Paths.get(bannerPath))) {</span>
+<span class="nc" id="L754">            return null;</span>
+        }
+
+        try {
+<span class="nc" id="L758">            BufferedReader bufferedReader = Files.newBufferedReader(Paths.get(bannerPath));</span>
+<span class="nc" id="L759">            bannerText = bufferedReader.lines().collect(Collectors.joining(&quot;\r\n&quot;));</span>
+<span class="nc" id="L760">        } catch (Exception e) {</span>
+<span class="nc" id="L761">            log.error(&quot;Load Start Banner file error&quot;, e);</span>
+<span class="nc" id="L762">        }</span>
+<span class="nc" id="L763">        return bannerText;</span>
+    }
+
+    /**
+     * Set blade start thread name
+     *
+     * @param threadName thread name
+     * @return return blade instance
+     */
+    public Blade threadName(String threadName) {
+<span class="nc" id="L773">        this.threadName = threadName;</span>
+<span class="nc" id="L774">        return this;</span>
+    }
+
+    /**
+     * Set context path, default is &quot;/&quot;
+     *
+     * @param contextPath context path
+     * @return return blade instance
+     * @since 2.0.8-RELEASE
+     */
+    public Blade contextPath(String contextPath) {
+<span class="nc" id="L785">        this.environment.set(BladeConst.ENV_KEY_CONTEXT_PATH, contextPath);</span>
+<span class="nc" id="L786">        return this;</span>
+    }
+
+    /**
+     * Load application environment configuration
+     *
+     * @param args command line parameters
+     */
+    private void loadConfig(String[] args) {
+<span class="nc" id="L795">        String bootConf = environment().get(BladeConst.ENV_KEY_BOOT_CONF, BladeConst.PROP_NAME);</span>
+<span class="nc" id="L796">        Environment bootEnv = Environment.of(bootConf);</span>
+<span class="nc" id="L797">        String envName = &quot;default&quot;;</span>
+
+<span class="nc bnc" id="L799" title="All 2 branches missed.">        if (!Objects.requireNonNull(bootEnv).isEmpty()) {</span>
+<span class="nc" id="L800">            Map&lt;String, String&gt; bootEnvMap = bootEnv.toMap();</span>
+<span class="nc" id="L801">            Set&lt;Map.Entry&lt;String, String&gt;&gt; entrySet = bootEnvMap.entrySet();</span>
+<span class="nc" id="L802">            entrySet.forEach(entry -&gt; environment.set(entry.getKey(), entry.getValue()));</span>
+        }
+
+<span class="nc" id="L805">        Map&lt;String, String&gt; argsMap = BladeKit.parseArgs(args);</span>
+<span class="nc bnc" id="L806" title="All 2 branches missed.">        if (!argsMap.isEmpty()) {</span>
+<span class="nc" id="L807">            log.info(&quot; command line args: {}&quot;, JsonKit.toString(argsMap));</span>
+        }
+
+<span class="nc bnc" id="L810" title="All 2 branches missed.">        if (StringKit.isNotEmpty(argsMap.get(BladeConst.ENV_KEY_APP_ENV))) {</span>
+<span class="nc" id="L811">            envName = argsMap.get(BladeConst.ENV_KEY_APP_ENV);</span>
+<span class="nc" id="L812">            String evnFileName = &quot;application-&quot; + envName + &quot;.properties&quot;;</span>
+<span class="nc" id="L813">            Environment customEnv = Environment.of(evnFileName);</span>
+<span class="nc bnc" id="L814" title="All 4 branches missed.">            if (customEnv != null &amp;&amp; !customEnv.isEmpty()) {</span>
+<span class="nc" id="L815">                customEnv.props().forEach((key, value) -&gt; this.environment.set(key.toString(), value));</span>
+            } else {
+                // compatible with older versions
+<span class="nc" id="L818">                evnFileName = &quot;app-&quot; + envName + &quot;.properties&quot;;</span>
+<span class="nc" id="L819">                customEnv = Environment.of(evnFileName);</span>
+
+<span class="nc bnc" id="L821" title="All 4 branches missed.">                if (customEnv != null &amp;&amp; !customEnv.isEmpty()) {</span>
+<span class="nc bnc" id="L822" title="All 2 branches missed.">                    for (Map.Entry&lt;Object, Object&gt; next : customEnv.props().entrySet()) {</span>
+<span class="nc" id="L823">                        this.environment.set(next.getKey().toString(), next.getValue());</span>
+<span class="nc" id="L824">                    }</span>
+                }
+            }
+<span class="nc" id="L827">            argsMap.remove(BladeConst.ENV_KEY_APP_ENV);</span>
+        }
+
+<span class="nc" id="L830">        this.environment.set(BladeConst.ENV_KEY_APP_ENV, envName);</span>
+
+<span class="nc" id="L832">        this.register(this.environment);</span>
+
+        // load terminal param
+<span class="nc bnc" id="L835" title="All 2 branches missed.">        if (BladeKit.isEmpty(args)) {</span>
+<span class="nc" id="L836">            return;</span>
+        }
+
+<span class="nc bnc" id="L839" title="All 2 branches missed.">        for (Map.Entry&lt;String, String&gt; next : argsMap.entrySet()) {</span>
+<span class="nc" id="L840">            this.environment.set(next.getKey(), next.getValue());</span>
+<span class="nc" id="L841">        }</span>
+
+<span class="nc" id="L843">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

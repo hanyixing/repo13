@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileChangeDetector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.kit.reload</a> &gt; <span class="el_source">FileChangeDetector.java</span></div><h1>FileChangeDetector.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.kit.reload;
+
+import com.hellokaton.blade.Environment;
+import com.hellokaton.blade.mvc.BladeConst;
+import com.hellokaton.blade.options.StaticOptions;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+
+/**
+ * Created by Eddie Wang on 12/25/17.
+ */
+<span class="nc" id="L21">@Slf4j</span>
+public class FileChangeDetector {
+    private final WatchService watcher;
+<span class="nc" id="L24">    private final Map&lt;WatchKey, Path&gt; pathMap = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L26">    public FileChangeDetector(String dirPath) throws IOException {</span>
+<span class="nc" id="L27">        watcher = FileSystems.getDefault().newWatchService();</span>
+<span class="nc" id="L28">        registerAll(Paths.get(dirPath));</span>
+<span class="nc" id="L29">    }</span>
+
+    private void register(Path dir) throws IOException {
+<span class="nc" id="L32">        WatchKey key = dir.register(watcher, StandardWatchEventKinds.ENTRY_MODIFY);</span>
+<span class="nc" id="L33">        pathMap.put(key, dir);</span>
+<span class="nc" id="L34">    }</span>
+
+    private void registerAll(Path dir) throws IOException {
+<span class="nc" id="L37">        Files.walkFileTree(dir, new SimpleFileVisitor&lt;Path&gt;() {</span>
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+<span class="nc" id="L40">                register(dir);</span>
+<span class="nc" id="L41">                return FileVisitResult.CONTINUE;</span>
+            }
+        });
+<span class="nc" id="L44">    }</span>
+
+    public void processEvent(BiConsumer&lt;WatchEvent.Kind&lt;Path&gt;, Path&gt; processor) {
+        for (; ; ) {
+            WatchKey key;
+            try {
+<span class="nc" id="L50">                key = watcher.take();</span>
+<span class="nc" id="L51">            } catch (InterruptedException e) {</span>
+<span class="nc" id="L52">                return;</span>
+<span class="nc" id="L53">            }</span>
+
+<span class="nc" id="L55">            Path dir = pathMap.get(key);</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">            for (WatchEvent&lt;?&gt; event : key.pollEvents()) {</span>
+<span class="nc" id="L57">                WatchEvent.Kind kind = event.kind();</span>
+<span class="nc" id="L58">                Path filePath = dir.resolve(((WatchEvent&lt;Path&gt;) event).context());</span>
+
+<span class="nc bnc" id="L60" title="All 2 branches missed.">                if (Files.isDirectory(filePath)) continue;</span>
+<span class="nc" id="L61">                log.info(&quot;File {} changes detected!&quot;, filePath.toString());</span>
+                //copy updated files to target
+<span class="nc" id="L63">                processor.accept(kind, filePath);</span>
+<span class="nc" id="L64">            }</span>
+<span class="nc" id="L65">            key.reset();</span>
+<span class="nc" id="L66">        }</span>
+    }
+
+    public static Path getDestPath(Path src, Environment env, StaticOptions staticOptions) {
+<span class="nc" id="L70">        String templateDir = env.get(BladeConst.ENV_KEY_TEMPLATE_PATH, &quot;/templates&quot;);</span>
+<span class="nc" id="L71">        List&lt;String&gt; templateOrStaticDirKeyword = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L72">        templateOrStaticDirKeyword.add(templateDir);</span>
+<span class="nc" id="L73">        templateOrStaticDirKeyword.addAll(staticOptions.getPaths());</span>
+
+<span class="nc" id="L75">        List&lt;String&gt; result = templateOrStaticDirKeyword.stream().filter(dir -&gt; src.toString().contains(dir)).collect(Collectors.toList());</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (result.size() != 1) {</span>
+<span class="nc" id="L77">            log.info(&quot;Cannot get dest dir&quot;);</span>
+<span class="nc" id="L78">            return null;</span>
+        }
+<span class="nc" id="L80">        String key = result.get(0);</span>
+<span class="nc" id="L81">        log.info(BladeConst.CLASSPATH + src.toString().substring(src.toString().indexOf(key)));</span>
+<span class="nc" id="L82">        return Paths.get(BladeConst.CLASSPATH + src.toString().substring(src.toString().indexOf(key)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

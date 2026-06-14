@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EpollKit.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.server</a> &gt; <span class="el_source">EpollKit.java</span></div><h1>EpollKit.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.server;
+
+import com.hellokaton.blade.kit.NamedThreadFactory;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import lombok.var;
+
+/**
+ * Epoll kit
+ * &lt;p&gt;
+ * enable epool event loop group
+ *
+ * @author biezhi
+ * @date 2017/9/22
+ */
+<span class="nc" id="L16">class EpollKit {</span>
+
+    static NettyServerGroup group(int threadCount, int workers) {
+<span class="nc" id="L19">        var bossGroup   = new EpollEventLoopGroup(threadCount, new NamedThreadFactory(&quot;epoll-boss@&quot;));</span>
+<span class="nc" id="L20">        var workerGroup = new EpollEventLoopGroup(workers, new NamedThreadFactory(&quot;epoll-worker@&quot;));</span>
+<span class="nc" id="L21">        return NettyServerGroup.builder().boosGroup(bossGroup).workerGroup(workerGroup).socketChannel(EpollServerSocketChannel.class).build();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

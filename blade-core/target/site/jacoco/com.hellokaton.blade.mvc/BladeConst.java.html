@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BladeConst.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc</a> &gt; <span class="el_source">BladeConst.java</span></div><h1>BladeConst.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.hellokaton.blade.mvc;
+
+import com.hellokaton.blade.kit.BladeKit;
+import com.hellokaton.blade.kit.StringKit;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Blade Const
+ *
+ * @author hellokaton 2022/5/3
+ */
+public interface BladeConst {
+
+    int DEFAULT_SERVER_PORT = 9000;
+    String DEFAULT_SERVER_ADDRESS = &quot;0.0.0.0&quot;;
+    String LOCAL_IP_ADDRESS = &quot;127.0.0.1&quot;;
+    String VERSION = &quot;2.1.2.RELEASE&quot;;
+    String WEB_JARS = &quot;/webjars/&quot;;
+<span class="nc" id="L35">    String CLASSPATH = BladeKit.getCurrentClassPath();</span>
+    String HTTP_DATE_FORMAT = &quot;EEE, dd MMM yyyy HH:mm:ss zzz&quot;;
+    String INTERNAL_SERVER_ERROR_HTML = &quot;&lt;center&gt;&lt;h1&gt;500 Internal Server Error&lt;/h1&gt;&lt;hr/&gt;&lt;/center&gt;&quot;;
+    String DEFAULT_THREAD_NAME = &quot;_(:3」∠)_&quot;;
+<span class="nc" id="L39">    List&lt;String&gt; PLUGIN_PACKAGE_NAME = new ArrayList&lt;&gt;(Collections.singletonList(&quot;com.hellokaton.blade.plugin&quot;));</span>
+
+    String PROP_NAME = &quot;classpath:application.properties&quot;;
+
+    // Env key
+    String ENV_KEY_DEV_MODE = &quot;app.dev-mode&quot;;
+    String ENV_KEY_APP_NAME = &quot;app.name&quot;;
+    String ENV_KEY_APP_ENV = &quot;app.env&quot;;
+    String ENV_KEY_APP_THREAD_NAME = &quot;app.thread-name&quot;;
+    String ENV_KEY_APP_WATCH_ENV = &quot;app.watch-env&quot;;
+    String ENV_KEY_BANNER_PATH = &quot;app.banner-path&quot;;
+    String ENV_KEY_TASK_THREAD_COUNT = &quot;app.task.thread-count&quot;;
+    String ENV_KEY_CONTEXT_PATH = &quot;app.context-path&quot;;
+    String ENV_KEY_REQUEST_LOG = &quot;app.request-log&quot;;
+    String ENV_KEY_FAVICON_DIR = &quot;app.favicon-dir&quot;;
+    String ENV_KEY_HTTP_MAX_CONTENT = &quot;http.max-content-size&quot;;
+    String ENV_KEY_GZIP_ENABLE = &quot;http.gzip.enabled&quot;;
+    String ENV_KEY_SESSION_ENABLED = &quot;http.session.enabled&quot;;
+    String ENV_KEY_SESSION_KEY = &quot;http.session.key&quot;;
+    String ENV_KEY_SESSION_TIMEOUT = &quot;http.session.timeout&quot;;
+    String ENV_KEY_HTTP_REQUEST_COST = &quot;http.request.cost&quot;;
+    String ENV_KEY_PAGE_404 = &quot;mvc.view.404&quot;;
+    String ENV_KEY_PAGE_500 = &quot;mvc.view.500&quot;;
+    String ENV_KEY_STATIC_LIST = &quot;static.show-list&quot;;
+    String ENV_KEY_STATIC_CACHE_SECONDS = &quot;static.cache-seconds&quot;;
+    String ENV_KEY_TEMPLATE_PATH = &quot;mvc.template.path&quot;;
+    String ENV_KEY_SERVER_ADDRESS = &quot;server.address&quot;;
+    String ENV_KEY_SERVER_PORT = &quot;server.port&quot;;
+    String ENV_KEY_PERFORMANCE = &quot;server.performance&quot;;
+    String ENV_KEY_SSL = &quot;server.ssl.enable&quot;;
+    String ENV_KEY_SSL_CERT = &quot;server.ssl.cert-path&quot;;
+    String ENV_KEY_SSL_PRIVATE_KEY = &quot;server.ssl.private-key-path&quot;;
+    String ENV_KEY_SSL_PRIVATE_KEY_PASS = &quot;server.ssl.private-key-pass&quot;;
+    String ENV_KEY_NETTY_TCP_NODELAY = &quot;server.netty.tcp-nodelay&quot;;
+    String ENV_KEY_NETTY_SO_KEEPALIVE = &quot;server.netty.so-keepalive&quot;;
+    String ENV_KEY_NETTY_SO_BACKLOG = &quot;server.netty.so-backlog&quot;;
+    String ENV_KEY_NETTY_ACCEPT_THREAD_COUNT = &quot;server.netty.accept-thread-count&quot;;
+    String ENV_KEY_NETTY_IO_THREAD_COUNT = &quot;server.netty.io-thread-count&quot;;
+
+    String ENV_KEY_BOOT_CONF = &quot;boot_conf&quot;;
+    String ENV_KEY_AUTO_REFRESH_DIR = &quot;app.auto.refresh.dir&quot;;
+
+    /**
+     * A request processing ends the elapsed time, in milliseconds.
+     */
+    String REQUEST_COST_TIME_ATTR = &quot;costTime&quot;;
+
+    String REQUEST_TO_STATIC_ATTR = &quot;_to_static&quot;;
+
+    String FAVICON_PATH = &quot;/favicon.ico&quot;;
+    String NEW_LINE = &quot;\r\n&quot;;
+
+    int BANNER_PADDING = 60;
+<span class="nc" id="L92">    String BANNER_TEXT = NEW_LINE +</span>
+<span class="nc" id="L93">            StringKit.padLeft(&quot;__, _,   _, __, __,&quot;, BANNER_PADDING) + NEW_LINE +</span>
+<span class="nc" id="L94">            StringKit.padLeft(&quot;|_) |   /_\\ | \\ |_&quot;, BANNER_PADDING - 1) + NEW_LINE +</span>
+<span class="nc" id="L95">            StringKit.padLeft(&quot;|_) | , | | |_/ |&quot;, BANNER_PADDING - 2) + NEW_LINE +</span>
+<span class="nc" id="L96">            StringKit.padLeft(&quot;~   ~~~ ~ ~ ~   ~~~&quot;, BANNER_PADDING);</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

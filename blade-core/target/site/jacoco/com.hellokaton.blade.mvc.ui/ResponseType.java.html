@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ResponseType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.ui</a> &gt; <span class="el_source">ResponseType.java</span></div><h1>ResponseType.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.ui;
+
+import com.hellokaton.blade.mvc.HttpConst;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+<span class="nc" id="L7">@Getter</span>
+<span class="nc" id="L8">@AllArgsConstructor</span>
+public enum ResponseType {
+<span class="nc" id="L10">    EMPTY(&quot;&quot;),</span>
+<span class="nc" id="L11">    JSON(HttpConst.CONTENT_TYPE_JSON),</span>
+<span class="nc" id="L12">    XML(HttpConst.CONTENT_TYPE_XML),</span>
+<span class="nc" id="L13">    TEXT(HttpConst.CONTENT_TYPE_TEXT),</span>
+<span class="nc" id="L14">    HTML(HttpConst.CONTENT_TYPE_HTML),</span>
+<span class="nc" id="L15">    VIEW(HttpConst.CONTENT_TYPE_HTML),</span>
+<span class="nc" id="L16">    STREAM(HttpConst.CONTENT_TYPE_STREAM),</span>
+<span class="nc" id="L17">    PREVIEW(&quot;&quot;),</span>
+    ;
+
+<span class="nc" id="L20">    private final String contentType;</span>
+
+    public String contentType() {
+<span class="nc" id="L23">        return this.contentType;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

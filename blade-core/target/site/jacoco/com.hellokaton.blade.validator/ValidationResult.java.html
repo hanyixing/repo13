@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ValidationResult.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.validator</a> &gt; <span class="el_source">ValidationResult.java</span></div><h1>ValidationResult.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2018, biezhi 王爵nice (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.validator;
+
+import com.hellokaton.blade.exception.ValidatorException;
+import com.hellokaton.blade.kit.BladeKit;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.var;
+
+<span class="nc bnc" id="L24" title="All 26 branches missed.">@Data</span>
+<span class="fc" id="L25">@AllArgsConstructor</span>
+public class ValidationResult {
+
+<span class="fc" id="L28">    private boolean valid;</span>
+<span class="fc" id="L29">    private String message;</span>
+<span class="nc" id="L30">    private String code;</span>
+
+    public static ValidationResult ok() {
+<span class="fc" id="L33">        return new ValidationResult(true, null, null);</span>
+    }
+
+    public static ValidationResult ok(String code) {
+<span class="nc" id="L37">        return new ValidationResult(true, null, code);</span>
+    }
+
+    public static ValidationResult fail(String message) {
+<span class="fc" id="L41">        return new ValidationResult(false, message, null);</span>
+    }
+
+    public static ValidationResult fail(String code, String message) {
+<span class="nc" id="L45">        return new ValidationResult(false, message, code);</span>
+    }
+
+    public void throwIfInvalid() {
+<span class="nc" id="L49">        this.throwMessage(getMessage());</span>
+<span class="nc" id="L50">    }</span>
+
+    public void throwIfInvalid(String fieldName) {
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        if (!isValid()) throw new ValidatorException(fieldName + &quot; &quot; + getMessage());</span>
+<span class="fc" id="L54">    }</span>
+
+    public &lt;T, R&gt; void throwIfInvalid(TypeFunction&lt;T, R&gt; function) {
+<span class="fc" id="L57">        var fieldName = BladeKit.getLambdaFieldName(function);</span>
+<span class="fc" id="L58">        throwIfInvalid(fieldName);</span>
+<span class="fc" id="L59">    }</span>
+
+    public void throwMessage(String msg) {
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">        if (!isValid()) throw new ValidatorException(msg);</span>
+<span class="nc" id="L63">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BladeCache.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.kit</a> &gt; <span class="el_source">BladeCache.java</span></div><h1>BladeCache.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.kit;
+
+import com.hellokaton.blade.asm.MethodAccess;
+import lombok.experimental.UtilityClass;
+
+import java.lang.invoke.SerializedLambda;
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.hellokaton.blade.kit.ReflectKit.methodToFieldName;
+
+/**
+ * Blade Cache
+ *
+ * @author biezhi
+ * @date 2018/4/22
+ */
+@UtilityClass
+<span class="nc" id="L20">public class BladeCache {</span>
+
+<span class="fc" id="L22">    private static final Map&lt;SerializedLambda, String&gt; CACHE_LAMBDA_NAME = new HashMap&lt;&gt;(8);</span>
+<span class="fc" id="L23">    private static final Map&lt;Class, MethodAccess&gt; CLASS_METHOD_ACCESS_MAP = new HashMap&lt;&gt;(8);</span>
+<span class="fc" id="L24">    private static final Map&lt;String, String&gt; PADDING_METHOD_STR = new HashMap&lt;&gt;(6);</span>
+
+    static {
+<span class="fc" id="L27">        PADDING_METHOD_STR.put(&quot;GET&quot;, StringKit.padRight(&quot;GET&quot;, 6));</span>
+<span class="fc" id="L28">        PADDING_METHOD_STR.put(&quot;POST&quot;, StringKit.padRight(&quot;POST&quot;, 6));</span>
+<span class="fc" id="L29">        PADDING_METHOD_STR.put(&quot;DELETE&quot;, StringKit.padRight(&quot;DELETE&quot;, 6));</span>
+<span class="fc" id="L30">        PADDING_METHOD_STR.put(&quot;PUT&quot;, StringKit.padRight(&quot;PUT&quot;, 6));</span>
+<span class="fc" id="L31">        PADDING_METHOD_STR.put(&quot;OPTIONS&quot;, StringKit.padRight(&quot;OPTIONS&quot;, 6));</span>
+<span class="fc" id="L32">        PADDING_METHOD_STR.put(&quot;HEAD&quot;, StringKit.padRight(&quot;HEAD&quot;, 6));</span>
+<span class="fc" id="L33">    }</span>
+
+    public static String getPaddingMethod(String method) {
+<span class="nc" id="L36">        return PADDING_METHOD_STR.get(method);</span>
+    }
+
+    public static final MethodAccess getMethodAccess(Class clazz) {
+<span class="nc" id="L40">        return CLASS_METHOD_ACCESS_MAP.computeIfAbsent(clazz, MethodAccess::get);</span>
+    }
+
+    public static String getLambdaFieldName(SerializedLambda serializedLambda) {
+<span class="fc" id="L44">        String name = CACHE_LAMBDA_NAME.get(serializedLambda);</span>
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (null != name) {</span>
+<span class="nc" id="L46">            return name;</span>
+        }
+<span class="fc" id="L48">        String className = serializedLambda.getImplClass().replace(&quot;/&quot;, &quot;.&quot;);</span>
+<span class="fc" id="L49">        String methodName = serializedLambda.getImplMethodName();</span>
+<span class="fc" id="L50">        String fieldName = methodToFieldName(methodName);</span>
+        try {
+<span class="fc" id="L52">            Field field = Class.forName(className).getDeclaredField(fieldName);</span>
+<span class="fc" id="L53">            name = field.getName();</span>
+<span class="fc" id="L54">            CACHE_LAMBDA_NAME.put(serializedLambda, name);</span>
+<span class="fc" id="L55">            return name;</span>
+<span class="nc" id="L56">        } catch (NoSuchFieldException | ClassNotFoundException e) {</span>
+<span class="nc" id="L57">            throw new RuntimeException(e);</span>
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

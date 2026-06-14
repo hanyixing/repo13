@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DefaultExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.handler</a> &gt; <span class="el_source">DefaultExceptionHandler.java</span></div><h1>DefaultExceptionHandler.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.handler;
+
+import com.hellokaton.blade.exception.*;
+import com.hellokaton.blade.kit.BladeCache;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.http.RawBody;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.http.Response;
+import com.hellokaton.blade.mvc.ui.HtmlCreator;
+import com.hellokaton.blade.mvc.ui.ModelAndView;
+import com.hellokaton.blade.mvc.ui.RestResponse;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Optional;
+
+import static com.hellokaton.blade.kit.BladeKit.log404;
+import static com.hellokaton.blade.kit.BladeKit.log405;
+import static com.hellokaton.blade.mvc.BladeConst.ENV_KEY_PAGE_404;
+import static com.hellokaton.blade.mvc.BladeConst.ENV_KEY_PAGE_500;
+import static com.hellokaton.blade.mvc.BladeConst.INTERNAL_SERVER_ERROR_HTML;
+
+/**
+ * Default exception handler implements
+ *
+ * @author biezhi
+ * @date 2017/9/18
+ */
+<span class="nc" id="L37">@Slf4j</span>
+<span class="nc" id="L38">public class DefaultExceptionHandler implements ExceptionHandler {</span>
+
+    @Override
+    public void handle(Exception e) {
+<span class="nc bnc" id="L42" title="All 2 branches missed.">        if (!ExceptionHandler.isResetByPeer(e)) {</span>
+<span class="nc" id="L43">            var response = WebContext.response();</span>
+<span class="nc" id="L44">            var request  = WebContext.request();</span>
+
+<span class="nc bnc" id="L46" title="All 2 branches missed.">            if (e instanceof BladeException) {</span>
+<span class="nc" id="L47">                this.handleBladeException((BladeException) e, request, response);</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">            } else if (e instanceof ValidatorException) {</span>
+<span class="nc" id="L49">                this.handleValidators(ValidatorException.class.cast(e), request, response);</span>
+            } else {
+<span class="nc" id="L51">                this.handleException(e, request, response);</span>
+            }
+        }
+<span class="nc" id="L54">    }</span>
+
+    protected void handleValidators(ValidatorException validatorException, Request request, Response response) {
+<span class="nc" id="L57">        var code = Optional.ofNullable(validatorException.getCode()).orElse(500);</span>
+<span class="nc bnc" id="L58" title="All 4 branches missed.">        if (request.isAjax() || request.contentType().toLowerCase().contains(&quot;json&quot;)) {</span>
+<span class="nc" id="L59">            response.json(RestResponse.fail(code, validatorException.getMessage()));</span>
+        } else {
+<span class="nc" id="L61">            this.handleException(validatorException, request, response);</span>
+        }
+<span class="nc" id="L63">    }</span>
+
+    protected void handleException(Exception e, Request request, Response response) {
+<span class="nc" id="L66">        log.error(&quot;&quot;, e);</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (null == response) {</span>
+<span class="nc" id="L68">            return;</span>
+        }
+<span class="nc" id="L70">        response.status(500);</span>
+<span class="nc" id="L71">        request.attribute(&quot;title&quot;, &quot;500 Internal Server Error&quot;);</span>
+<span class="nc" id="L72">        request.attribute(&quot;message&quot;, e.getMessage());</span>
+<span class="nc" id="L73">        request.attribute(&quot;stackTrace&quot;, getStackTrace(e));</span>
+<span class="nc" id="L74">        this.render500(request, response);</span>
+<span class="nc" id="L75">    }</span>
+
+    protected void handleBladeException(BladeException e, Request request, Response response) {
+<span class="nc" id="L78">        var blade = WebContext.blade();</span>
+<span class="nc" id="L79">        response.status(e.getStatus());</span>
+
+<span class="nc" id="L81">        var modelAndView = new ModelAndView();</span>
+<span class="nc" id="L82">        modelAndView.add(&quot;title&quot;, e.getStatus() + &quot; &quot; + e.getName());</span>
+<span class="nc" id="L83">        modelAndView.add(&quot;message&quot;, e.getMessage());</span>
+
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (null != e.getCause()) {</span>
+<span class="nc" id="L86">            request.attribute(VARIABLE_STACKTRACE, getStackTrace(e));</span>
+        }
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (e.getStatus() == InternalErrorException.STATUS) {</span>
+<span class="nc" id="L90">            log.error(&quot;&quot;, e);</span>
+<span class="nc" id="L91">            this.render500(request, response);</span>
+        }
+
+<span class="nc" id="L94">        String paddingMethod = BladeCache.getPaddingMethod(request.method());</span>
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        if (e.getStatus() == NotFoundException.STATUS) {</span>
+<span class="nc" id="L97">            log404(log, paddingMethod, request.uri());</span>
+
+<span class="nc bnc" id="L99" title="All 2 branches missed.">            if (request.isJsonRequest()) {</span>
+<span class="nc" id="L100">                response.json(RestResponse.fail(NotFoundException.STATUS, &quot;Not Found [&quot; + request.uri() + &quot;]&quot;));</span>
+            } else {
+<span class="nc" id="L102">                var page404 = Optional.ofNullable(blade.environment().get(ENV_KEY_PAGE_404, null));</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">                if (page404.isPresent()) {</span>
+<span class="nc" id="L104">                    modelAndView.setView(page404.get());</span>
+<span class="nc" id="L105">                    renderPage(response, modelAndView);</span>
+<span class="nc" id="L106">                    response.render(page404.get());</span>
+                } else {
+<span class="nc" id="L108">                    HtmlCreator htmlCreator = new HtmlCreator();</span>
+<span class="nc" id="L109">                    htmlCreator.center(&quot;&lt;h1&gt;404 Not Found - &quot; + request.uri() + &quot;&lt;/h1&gt;&quot;);</span>
+<span class="nc" id="L110">                    htmlCreator.hr();</span>
+<span class="nc" id="L111">                    response.html(htmlCreator.html());</span>
+                }
+            }
+        }
+
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (e.getStatus() == MethodNotAllowedException.STATUS) {</span>
+
+<span class="nc" id="L118">            log405(log, paddingMethod, request.uri());</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">            if (request.isJsonRequest()) {</span>
+<span class="nc" id="L121">                response.json(RestResponse.fail(MethodNotAllowedException.STATUS, e.getMessage()));</span>
+            } else {
+<span class="nc" id="L123">                response.text(e.getMessage());</span>
+            }
+        }
+<span class="nc" id="L126">    }</span>
+
+    protected void render500(Request request, Response response) {
+<span class="nc" id="L129">        var blade   = WebContext.blade();</span>
+<span class="nc" id="L130">        var page500 = Optional.ofNullable(blade.environment().get(ENV_KEY_PAGE_500, null));</span>
+
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        if (page500.isPresent()) {</span>
+<span class="nc" id="L133">            this.renderPage(response, new ModelAndView(page500.get()));</span>
+        } else {
+<span class="nc bnc" id="L135" title="All 2 branches missed.">            if (blade.devMode()) {</span>
+<span class="nc" id="L136">                var htmlCreator = new HtmlCreator();</span>
+<span class="nc" id="L137">                htmlCreator.center(&quot;&lt;h1&gt;&quot; + request.attribute(&quot;title&quot;) + &quot;&lt;/h1&gt;&quot;);</span>
+<span class="nc" id="L138">                htmlCreator.startP(&quot;message-header&quot;);</span>
+<span class="nc" id="L139">                htmlCreator.add(&quot;Request URI: &quot; + request.uri());</span>
+<span class="nc" id="L140">                htmlCreator.startP(&quot;message-header&quot;);</span>
+<span class="nc" id="L141">                htmlCreator.add(&quot;Error Message: &quot; + request.attribute(&quot;message&quot;));</span>
+<span class="nc" id="L142">                htmlCreator.endP();</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">                if (null != request.attribute(VARIABLE_STACKTRACE)) {</span>
+<span class="nc" id="L144">                    htmlCreator.startP(&quot;message-body&quot;);</span>
+<span class="nc" id="L145">                    htmlCreator.add(request.attribute(VARIABLE_STACKTRACE).toString().replace(&quot;\n&quot;, &quot;&lt;br/&gt;&quot;));</span>
+<span class="nc" id="L146">                    htmlCreator.endP();</span>
+                }
+<span class="nc" id="L148">                response.html(htmlCreator.html());</span>
+<span class="nc" id="L149">            } else {</span>
+<span class="nc" id="L150">                response.html(INTERNAL_SERVER_ERROR_HTML);</span>
+            }
+        }
+<span class="nc" id="L153">    }</span>
+
+    protected void renderPage(Response response, ModelAndView modelAndView) {
+<span class="nc" id="L156">        var sw = new StringWriter();</span>
+        try {
+<span class="nc" id="L158">            WebContext.blade().templateEngine().render(modelAndView, sw);</span>
+<span class="nc" id="L159">            ByteBuf          buffer           = Unpooled.wrappedBuffer(sw.toString().getBytes(&quot;utf-8&quot;));</span>
+<span class="nc" id="L160">            FullHttpResponse fullHttpResponse = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(response.statusCode()), buffer);</span>
+<span class="nc" id="L161">            response.body(new RawBody(fullHttpResponse));</span>
+<span class="nc" id="L162">        } catch (Exception e) {</span>
+<span class="nc" id="L163">            log.error(&quot;Render view error&quot;, e);</span>
+<span class="nc" id="L164">        }</span>
+<span class="nc" id="L165">    }</span>
+
+    protected String getStackTrace(Throwable exception) {
+<span class="nc" id="L168">        var errors = new StringWriter();</span>
+<span class="nc" id="L169">        exception.printStackTrace(new PrintWriter(errors));</span>
+<span class="nc" id="L170">        return errors.toString();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

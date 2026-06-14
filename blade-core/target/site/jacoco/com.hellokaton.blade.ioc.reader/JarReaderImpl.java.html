@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JarReaderImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.ioc.reader</a> &gt; <span class="el_source">JarReaderImpl.java</span></div><h1>JarReaderImpl.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.ioc.reader;
+
+import com.hellokaton.blade.ioc.ClassReader;
+import com.hellokaton.blade.ioc.bean.ClassInfo;
+import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.net.JarURLConnection;
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+
+/**
+ * Read the class according to the jar file
+ *
+ * @author &lt;a href=&quot;mailto:hellokaton@gmail.com&quot; target=&quot;_blank&quot;&gt;hellokaton&lt;/a&gt;
+ * @since 1.0
+ */
+<span class="nc" id="L24">@Slf4j</span>
+<span class="nc bnc" id="L25" title="All 8 branches missed.">@EqualsAndHashCode(callSuper = true)</span>
+<span class="nc" id="L26">public class JarReaderImpl extends AbstractClassReader implements ClassReader {</span>
+
+    private static final String JAR_FILE   = &quot;jar:file:&quot;;
+    private static final String WSJAR_FILE = &quot;wsjar:file:&quot;;
+
+    @Override
+    public Set&lt;ClassInfo&gt; getClassByAnnotation(String packageName, Class&lt;?&gt; parent, Class&lt;? extends Annotation&gt; annotation, boolean recursive) {
+<span class="nc" id="L33">        Set&lt;ClassInfo&gt; classes = new HashSet&lt;&gt;();</span>
+        // Get the name of the package and replace it
+<span class="nc" id="L35">        String packageDirName = packageName.replace('.', '/');</span>
+        // Defines an enumerated collection and loops to process the URL in this directory
+        Enumeration&lt;URL&gt; dirs;
+        try {
+<span class="nc" id="L39">            dirs = this.getClass().getClassLoader().getResources(packageDirName);</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">            while (dirs.hasMoreElements()) {</span>
+                // Next
+<span class="nc" id="L42">                URL            url        = dirs.nextElement();</span>
+<span class="nc" id="L43">                Set&lt;ClassInfo&gt; subClasses = this.getClasses(url, packageDirName, packageName, parent, annotation, recursive, classes);</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">                if (subClasses.size() &gt; 0) {</span>
+<span class="nc" id="L45">                    classes.addAll(subClasses);</span>
+                }
+<span class="nc" id="L47">            }</span>
+<span class="nc" id="L48">        } catch (IOException e) {</span>
+<span class="nc" id="L49">            log.error(e.getMessage(), e);</span>
+<span class="nc" id="L50">        }</span>
+<span class="nc" id="L51">        return classes;</span>
+    }
+
+    private Set&lt;ClassInfo&gt; getClasses(final URL url, final String packageDirName, String packageName, final Class&lt;?&gt; parent,
+                                      final Class&lt;? extends Annotation&gt; annotation, final boolean recursive, Set&lt;ClassInfo&gt; classes) {
+        try {
+<span class="nc bnc" id="L57" title="All 4 branches missed.">            if (url.toString().startsWith(JAR_FILE) || url.toString().startsWith(WSJAR_FILE)) {</span>
+
+                // Get jar file
+<span class="nc" id="L60">                JarFile jarFile = ((JarURLConnection) url.openConnection()).getJarFile();</span>
+
+                // From the jar package to get an enumeration class
+<span class="nc" id="L63">                Enumeration&lt;JarEntry&gt; eje = jarFile.entries();</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">                while (eje.hasMoreElements()) {</span>
+                    // Get an entity in jar can be a directory and some other documents in the jar package
+                    // such as META-INF and other documents
+<span class="nc" id="L67">                    JarEntry entry = eje.nextElement();</span>
+<span class="nc" id="L68">                    String   name  = entry.getName();</span>
+                    // if start with '/'
+<span class="nc bnc" id="L70" title="All 2 branches missed.">                    if (name.charAt(0) == '/') {</span>
+<span class="nc" id="L71">                        name = name.substring(1);</span>
+                    }
+                    // If the first half is the same as the defined package name
+<span class="nc bnc" id="L74" title="All 2 branches missed.">                    if (!name.startsWith(packageDirName)) {</span>
+<span class="nc" id="L75">                        continue;</span>
+                    }
+<span class="nc" id="L77">                    int idx = name.lastIndexOf('/');</span>
+                    // If the end of &quot;/&quot; is a package
+<span class="nc bnc" id="L79" title="All 2 branches missed.">                    if (idx != -1) {</span>
+                        // Get the package name and replace &quot;/&quot; with &quot;.&quot;
+<span class="nc" id="L81">                        packageName = name.substring(0, idx).replace('/', '.');</span>
+                    }
+                    // If it can be iterated and is a package
+<span class="nc bnc" id="L84" title="All 4 branches missed.">                    if (idx == -1 &amp;&amp; !recursive) {</span>
+<span class="nc" id="L85">                        continue;</span>
+                    }
+                    // If it is a .class file and not a directory
+<span class="nc bnc" id="L88" title="All 4 branches missed.">                    if (!name.endsWith(&quot;.class&quot;) || entry.isDirectory()) {</span>
+<span class="nc" id="L89">                        continue;</span>
+                    }
+                    // Remove the following &quot;.class&quot; to get the real class name
+<span class="nc" id="L92">                    String className = name.substring(packageName.length() + 1, name.length() - 6);</span>
+                    // Add to classes
+<span class="nc" id="L94">                    Class&lt;?&gt; clazz = Class.forName(packageName + '.' + className);</span>
+<span class="nc bnc" id="L95" title="All 4 branches missed.">                    if (null != parent &amp;&amp; null != annotation) {</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">                        if (null != clazz.getSuperclass() &amp;&amp;</span>
+<span class="nc bnc" id="L97" title="All 4 branches missed.">                                clazz.getSuperclass().equals(parent) &amp;&amp; null != clazz.getAnnotation(annotation)) {</span>
+<span class="nc" id="L98">                            classes.add(new ClassInfo(clazz));</span>
+                        }
+                        continue;
+                    }
+<span class="nc bnc" id="L102" title="All 2 branches missed.">                    if (null != parent) {</span>
+<span class="nc bnc" id="L103" title="All 4 branches missed.">                        if (null != clazz.getSuperclass() &amp;&amp; clazz.getSuperclass().equals(parent)) {</span>
+<span class="nc" id="L104">                            classes.add(new ClassInfo(clazz));</span>
+                        }
+                        continue;
+                    }
+<span class="nc bnc" id="L108" title="All 2 branches missed.">                    if (null != annotation) {</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">                        if (null != clazz.getAnnotation(annotation)) {</span>
+<span class="nc" id="L110">                            classes.add(new ClassInfo(clazz));</span>
+                        }
+                        continue;
+                    }
+<span class="nc" id="L114">                    classes.add(new ClassInfo(clazz));</span>
+<span class="nc" id="L115">                }</span>
+            }
+<span class="nc" id="L117">        } catch (IOException e) {</span>
+<span class="nc" id="L118">            log.error(&quot;The scan error when the user to define the view from a jar package file.&quot;, e);</span>
+<span class="nc" id="L119">        } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L120">            log.error(&quot;&quot;, e);</span>
+<span class="nc" id="L121">        }</span>
+<span class="nc" id="L122">        return classes;</span>
+    }
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

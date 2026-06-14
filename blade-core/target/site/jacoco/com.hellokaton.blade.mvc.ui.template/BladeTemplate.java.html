@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BladeTemplate.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.ui.template</a> &gt; <span class="el_source">BladeTemplate.java</span></div><h1>BladeTemplate.java</h1><pre class="source lang-java linenums">
+package com.hellokaton.blade.mvc.ui.template;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.charset.Charset;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.lang.Character.isDigit;
+import static java.lang.Character.isLetter;
+import static java.lang.reflect.Array.get;
+import static java.lang.reflect.Array.getLength;
+import static java.nio.file.Files.readAllBytes;
+
+public class BladeTemplate {
+
+<span class="nc" id="L20">    protected enum State {</span>
+        // &lt;'here'&gt; ${} &lt;'here'&gt;
+<span class="nc" id="L22">        FREE_TEXT,</span>
+        // ${'&lt;here&gt;'}
+<span class="nc" id="L24">        PARAM,</span>
+        // '${'
+<span class="nc" id="L26">        PARAM_START,</span>
+        // '}'
+<span class="nc" id="L28">        PARAM_END,</span>
+        // Escape char
+<span class="nc" id="L30">        ESCAPE_CHAR</span>
+    }
+
+    private final String str;
+<span class="nc" id="L34">    private final Map&lt;String, Object&gt; arguments = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L36">    private BladeTemplate(String str) {</span>
+<span class="nc" id="L37">        this.str = str;</span>
+<span class="nc" id="L38">    }</span>
+
+    public static BladeTemplate template(String str) {
+<span class="nc" id="L41">        return new BladeTemplate(str);</span>
+    }
+
+    public static BladeTemplate template(String str, Object... args) {
+<span class="nc" id="L45">        return template(str).args(args);</span>
+    }
+
+    public static BladeTemplate template(String str, Map&lt;String, Object&gt; args) {
+<span class="nc" id="L49">        return template(str).args(args);</span>
+    }
+
+    public static BladeTemplate fromFile(String strPath) {
+<span class="nc" id="L53">        return template(readFromFile(strPath));</span>
+    }
+
+    public static BladeTemplate fromFile(String strPath, Charset encoding) {
+<span class="nc" id="L57">        return template(readFromFile(strPath, encoding));</span>
+    }
+
+    public static BladeTemplate fromFile(String strPath, Object... args) {
+<span class="nc" id="L61">        return template(readFromFile(strPath), args);</span>
+    }
+
+    public static BladeTemplate fromFile(String strPath, Charset encoding, Object... args) {
+<span class="nc" id="L65">        return template(readFromFile(strPath, encoding), args);</span>
+    }
+
+    public static BladeTemplate fromFile(String strPath, Map&lt;String, Object&gt; args) {
+<span class="nc" id="L69">        return template(readFromFile(strPath), args);</span>
+    }
+
+    public static BladeTemplate fromFile(String strPath, Charset encoding, Map&lt;String, Object&gt; args) {
+<span class="nc" id="L73">        return template(readFromFile(strPath, encoding), args);</span>
+    }
+
+    private void failIfArgExists(String argName) {
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (arguments.containsKey(argName))</span>
+<span class="nc" id="L78">            throw UncheckedTemplateException.argumentAlreadyExist(argName);</span>
+<span class="nc" id="L79">    }</span>
+
+    private static String readFromFile(String strPath, Charset encoding) {
+        try {
+<span class="nc" id="L83">            byte[] encodedBytes = readAllBytes(Paths.get(strPath));</span>
+<span class="nc" id="L84">            return new String(encodedBytes, encoding);</span>
+<span class="nc" id="L85">        } catch (IOException e) {</span>
+<span class="nc" id="L86">            throw UncheckedTemplateException.ioExceptionReadingFromFile(strPath, e);</span>
+        }
+    }
+
+    private static String readFromFile(String strPath) {
+<span class="nc" id="L91">        return readFromFile(strPath, Charset.forName(&quot;UTF8&quot;));</span>
+    }
+
+    public BladeTemplate arg(String argName, Object object) {
+<span class="nc" id="L95">        failIfArgExists(argName);</span>
+<span class="nc" id="L96">        this.arguments.put(argName, object);</span>
+<span class="nc" id="L97">        return this;</span>
+    }
+
+    public BladeTemplate args(Map&lt;String, Object&gt; args) {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        for (Map.Entry&lt;String, Object&gt; entry : args.entrySet()) {</span>
+<span class="nc" id="L102">            failIfArgExists(entry.getKey());</span>
+<span class="nc" id="L103">            this.arguments.put(entry.getKey(), entry.getValue());</span>
+<span class="nc" id="L104">        }</span>
+<span class="nc" id="L105">        return this;</span>
+    }
+
+    public BladeTemplate args(Object... args) {
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (args.length % 2 == 1)</span>
+<span class="nc" id="L110">            throw UncheckedTemplateException.invalidNumberOfArguments(args.length);</span>
+        String key;
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        for (int i = 0; i &lt; args.length; i += 2) {</span>
+<span class="nc" id="L113">            key = (String) args[i];</span>
+<span class="nc" id="L114">            failIfArgExists(key);</span>
+<span class="nc" id="L115">            this.arguments.put(key, args[i + 1]);</span>
+        }
+<span class="nc" id="L117">        return this;</span>
+    }
+
+    /**
+     */
+    public String fmt() {
+
+<span class="nc" id="L124">        final StringBuilder result = new StringBuilder(str.length());</span>
+<span class="nc" id="L125">        final StringBuilder param  = new StringBuilder(16);</span>
+
+<span class="nc" id="L127">        State state = State.FREE_TEXT;</span>
+
+<span class="nc" id="L129">        int  i = 0;</span>
+        char chr;
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        while (i &lt; str.length()) {</span>
+<span class="nc" id="L132">            chr = str.charAt(i);</span>
+<span class="nc" id="L133">            state = nextState(state, i);</span>
+<span class="nc bnc" id="L134" title="All 5 branches missed.">            switch (state) {</span>
+                // In this state we just add the character to the
+                // resulting buffer. No need to perform any processing.
+                case FREE_TEXT: {
+<span class="nc" id="L138">                    result.append(chr);</span>
+<span class="nc" id="L139">                    break;</span>
+                }
+                // We identify '$'. We skip the following '{'.
+                case PARAM_START: {
+<span class="nc" id="L143">                    i++;</span>
+<span class="nc" id="L144">                    break;</span>
+                }
+                // We append the character to the param chain buffer
+                case PARAM: {
+<span class="nc" id="L148">                    validateParamChar(chr, i);</span>
+<span class="nc" id="L149">                    param.append(chr);</span>
+<span class="nc" id="L150">                    break;</span>
+                }
+                // We append and replace the param with the correct value
+                case PARAM_END: {
+<span class="nc" id="L154">                    appendParamValue(param, result);</span>
+<span class="nc" id="L155">                    break;</span>
+                }
+                // Escape character
+                case ESCAPE_CHAR:
+                    break;
+            }
+<span class="nc" id="L161">            i++;</span>
+        }
+
+<span class="nc" id="L164">        return result.toString();</span>
+    }
+
+    // The method that is used to change the states depending on the index
+    // in the string and the current value of the character
+    private State nextState(State currentState, int i) {
+<span class="nc bnc" id="L170" title="All 6 branches missed.">        switch (currentState) {</span>
+            case FREE_TEXT:
+<span class="nc" id="L172">                return jumpFromFreeText(str, i);</span>
+            case PARAM_START:
+<span class="nc" id="L174">                return jumpFromParamStart(str, i);</span>
+            case PARAM:
+<span class="nc" id="L176">                return jumpFromParam(str, i);</span>
+            case PARAM_END:
+<span class="nc" id="L178">                return jumpFromParamEnd(str, i);</span>
+            case ESCAPE_CHAR:
+<span class="nc" id="L180">                return State.FREE_TEXT;</span>
+            // Should never go here
+            default:
+<span class="nc" id="L183">                throw UncheckedTemplateException.invalidStateException(currentState);</span>
+        }
+    }
+
+    // This methods gets called when we want to obtain the value of the parameter
+    //
+    // - The parameter can be a simple argument &quot;#{intVal}&quot; and in this case
+    // it is obtained directly from the arguments map.
+    //
+    // - The parameter can be a method chain argument: &quot;#{address.getLine1.getNumber}&quot;
+    // in this case it is obtained by calling recursively the methods on the last obtained object
+    private void appendParamValue(StringBuilder param, StringBuilder result) {
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if (param == null)</span>
+<span class="nc" id="L196">            throw UncheckedTemplateException.invalidArgumentName(param);</span>
+
+        // Object name is the parameter that should be found in the map.
+        // If it's followed by points, the points remain in the &quot;param&quot; buffer.
+<span class="nc" id="L200">        final String objectName  = takeUntilDotOrEnd(param);</span>
+<span class="nc" id="L201">        final Object objectValue = arguments.get(objectName);</span>
+
+        Object toAppend;
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (param.length() != 0) {</span>
+            // If this is a chain object.method1.method2.method3
+            // we recurse
+<span class="nc" id="L207">            toAppend = valueInChain(objectValue, param);</span>
+        } else {
+            // We evaluate if the obejct is an array
+            // If it's an array we print it nicely
+<span class="nc" id="L211">            toAppend = evaluateIfArray(objectValue);</span>
+        }
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        if (null != toAppend) {</span>
+<span class="nc" id="L214">            result.append(toAppend);</span>
+        }
+
+<span class="nc" id="L217">    }</span>
+
+    private static Object evaluateIfArray(Object o) {
+<span class="nc bnc" id="L220" title="All 4 branches missed.">        if (null != o &amp;&amp; o.getClass().isArray())</span>
+<span class="nc" id="L221">            return arrayToString(o);</span>
+<span class="nc" id="L222">        return o;</span>
+    }
+
+    private static String arrayToString(Object array) {
+<span class="nc" id="L226">        final StringBuilder buff = new StringBuilder(&quot;[&quot;);</span>
+
+<span class="nc bnc" id="L228" title="All 2 branches missed.">        for (int i = 0; i &lt; getLength(array); ++i)</span>
+<span class="nc" id="L229">            buff.append(get(array, i)).append(&quot;, &quot;);</span>
+
+<span class="nc" id="L231">        return clearLastComma(buff).append(&quot;]&quot;).toString();</span>
+    }
+
+    private static StringBuilder clearLastComma(StringBuilder buff) {
+<span class="nc" id="L235">        int lastComma = buff.lastIndexOf(&quot;, &quot;);</span>
+
+        // No comma found, take everything
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        if (-1 != lastComma)</span>
+<span class="nc" id="L239">            buff.delete(lastComma, buff.length());</span>
+
+<span class="nc" id="L241">        return buff;</span>
+    }
+
+    // This method takes the section until the end of the buff or
+    // until it finds the first dot &quot;.&quot;.
+    private static String takeUntilDotOrEnd(StringBuilder buff) {
+
+<span class="nc" id="L248">        final int firstPointIdx = buff.indexOf(&quot;.&quot;);</span>
+        String    result;
+
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (-1 == firstPointIdx) {</span>
+<span class="nc" id="L252">            result = buff.toString();</span>
+<span class="nc" id="L253">            buff.setLength(0);</span>
+        } else {
+<span class="nc" id="L255">            result = buff.substring(0, firstPointIdx);</span>
+<span class="nc" id="L256">            buff.delete(0, firstPointIdx + 1);</span>
+        }
+
+<span class="nc" id="L259">        return result;</span>
+    }
+
+    // Recursively obtain the value from the method chain by invoking the methods
+    // using reflection on the last object obtained.
+    private static Object valueInChain(Object object, StringBuilder paramBuffer) {
+
+        // When last obtained is null or when there are no more methods in the chain
+        // we stop
+<span class="nc bnc" id="L268" title="All 4 branches missed.">        if (object == null || paramBuffer.length() == 0) {</span>
+<span class="nc" id="L269">            return evaluateIfArray(object);</span>
+        }
+
+<span class="nc" id="L272">        final String methodName = takeUntilDotOrEnd(paramBuffer);</span>
+
+        Object newObject;
+        try {
+<span class="nc bnc" id="L276" title="All 2 branches missed.">            if (object instanceof Map) {</span>
+<span class="nc" id="L277">                newObject = ((Map) object).get(methodName);</span>
+            } else {
+                // Try with the given method or with the getter as a fallback
+<span class="nc" id="L280">                Method method = getMethodOrGetter(object, methodName);</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">                if (null == method)</span>
+<span class="nc" id="L282">                    return null;</span>
+<span class="nc" id="L283">                newObject = method.invoke(object);</span>
+            }
+<span class="nc" id="L285">            return valueInChain(newObject, paramBuffer);</span>
+<span class="nc" id="L286">        } catch (IllegalAccessException | InvocationTargetException e) {</span>
+            // Couldn't invoke the method
+<span class="nc" id="L288">            return null;</span>
+        }
+    }
+
+    private static Method getMethodOrGetter(Object object, String methodName) {
+        Method method;
+        try {
+<span class="nc" id="L295">            method = object.getClass().getMethod(methodName);</span>
+<span class="nc" id="L296">        } catch (NoSuchMethodException e) {</span>
+            try {
+                // Maybe improve this
+<span class="nc" id="L299">                final String capital         = methodName.substring(0, 1).toUpperCase();</span>
+<span class="nc" id="L300">                final String nameCapitalized = &quot;get&quot; + capital + methodName.substring(1);</span>
+<span class="nc" id="L301">                method = object.getClass().getMethod(nameCapitalized);</span>
+<span class="nc" id="L302">            } catch (NoSuchMethodException e1) {</span>
+<span class="nc" id="L303">                return null;</span>
+<span class="nc" id="L304">            }</span>
+<span class="nc" id="L305">        }</span>
+<span class="nc" id="L306">        return method;</span>
+    }
+
+    private static State jumpFromFreeText(String fmt, int idx) {
+<span class="nc bnc" id="L310" title="All 2 branches missed.">        if (isEscapeChar(fmt, idx))</span>
+<span class="nc" id="L311">            return State.ESCAPE_CHAR;</span>
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        if (isParamStart(fmt, idx))</span>
+<span class="nc" id="L313">            return State.PARAM_START;</span>
+<span class="nc" id="L314">        return State.FREE_TEXT;</span>
+    }
+
+    private static State jumpFromParamStart(String fmt, int idx) {
+<span class="nc bnc" id="L318" title="All 2 branches missed.">        if (isParamEnd(fmt, idx))</span>
+<span class="nc" id="L319">            return State.PARAM_END;</span>
+<span class="nc" id="L320">        return State.PARAM;</span>
+    }
+
+    private static State jumpFromParam(String fmt, int idx) {
+<span class="nc bnc" id="L324" title="All 2 branches missed.">        if (isParamEnd(fmt, idx))</span>
+<span class="nc" id="L325">            return State.PARAM_END;</span>
+<span class="nc" id="L326">        return State.PARAM;</span>
+    }
+
+    private static State jumpFromParamEnd(String fmt, int idx) {
+<span class="nc bnc" id="L330" title="All 2 branches missed.">        if (isEscapeChar(fmt, idx))</span>
+<span class="nc" id="L331">            return State.ESCAPE_CHAR;</span>
+<span class="nc bnc" id="L332" title="All 2 branches missed.">        if (isParamStart(fmt, idx))</span>
+<span class="nc" id="L333">            return State.PARAM_START;</span>
+<span class="nc" id="L334">        return State.FREE_TEXT;</span>
+    }
+
+    private static boolean isParamStart(String fmt, int idx) {
+<span class="nc bnc" id="L338" title="All 2 branches missed.">        return ('$' == fmt.charAt(idx)) &amp;&amp;</span>
+<span class="nc bnc" id="L339" title="All 4 branches missed.">                (idx + 1 &lt; fmt.length() &amp;&amp; ('{' == fmt.charAt(idx + 1)));</span>
+    }
+
+    private static boolean isParamEnd(String fmt, int idx) {
+<span class="nc bnc" id="L343" title="All 2 branches missed.">        return '}' == fmt.charAt(idx);</span>
+    }
+
+    private static boolean isEscapeChar(String fmt, int idx) {
+<span class="nc bnc" id="L347" title="All 2 branches missed.">        return '`' == fmt.charAt(idx);</span>
+    }
+
+    private static void validateParamChar(char cc, int idx) {
+<span class="nc bnc" id="L351" title="All 6 branches missed.">        if (!(isDigit(cc) || isLetter(cc) || '.' == cc))</span>
+<span class="nc" id="L352">            throw UncheckedTemplateException.invalidCharacterInParam(cc, idx);</span>
+<span class="nc" id="L353">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

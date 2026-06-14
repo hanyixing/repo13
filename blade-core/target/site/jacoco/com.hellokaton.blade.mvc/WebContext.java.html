@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WebContext.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc</a> &gt; <span class="el_source">WebContext.java</span></div><h1>WebContext.java</h1><pre class="source lang-java linenums">/**
+ * Copyright (c) 2022, katon (hellokaton@gmail.com)
+ * &lt;p&gt;
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * &lt;p&gt;
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * &lt;p&gt;
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hellokaton.blade.mvc;
+
+import com.hellokaton.blade.Blade;
+import com.hellokaton.blade.Environment;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.http.Response;
+import com.hellokaton.blade.mvc.route.Route;
+import io.netty.channel.ChannelHandlerContext;
+import lombok.NoArgsConstructor;
+import lombok.var;
+
+import java.util.Optional;
+
+import static com.hellokaton.blade.server.HttpServerHandler.WEB_CONTEXT_THREAD_LOCAL;
+
+/**
+ * Blade Web Context
+ * &lt;p&gt;
+ * Route logic current thread context request and response instance.
+ *
+ * @author biezhi
+ * 2017/6/1
+ */
+<span class="nc" id="L39">@NoArgsConstructor</span>
+public class WebContext {
+
+    /**
+     * Blade instance, when the project is initialized when it will permanently reside in memory
+     */
+    private static Blade blade;
+
+    /**
+     * ContextPath, default is &quot;/&quot;
+     */
+    private static String contextPath;
+
+    /**
+     * Http Request instance of current thread context
+     */
+    private Request request;
+
+    /**
+     * Http Response instance of current thread context
+     */
+    private Response response;
+
+    private Route route;
+
+    private ChannelHandlerContext channelHandlerContext;
+
+    public WebContext(Request request, Response response,
+<span class="nc" id="L67">                      ChannelHandlerContext channelHandlerContext) {</span>
+
+<span class="nc" id="L69">        this.request = request;</span>
+<span class="nc" id="L70">        this.response = response;</span>
+<span class="nc" id="L71">        this.channelHandlerContext = channelHandlerContext;</span>
+<span class="nc" id="L72">    }</span>
+
+    public Request getRequest() {
+<span class="nc" id="L75">        return request;</span>
+    }
+
+    public Response getResponse() {
+<span class="nc" id="L79">        return response;</span>
+    }
+
+    public Environment environment() {
+<span class="nc" id="L83">        return blade.environment();</span>
+    }
+
+    /**
+     * Get application environment information.
+     *
+     * @param key environment key
+     * @return environment optional value
+     */
+    public Optional&lt;String&gt; getEnv(String key) {
+<span class="nc" id="L93">        return blade().getEnv(key);</span>
+    }
+
+    /**
+     * Get application environment information.
+     *
+     * @param key          environment key
+     * @param defaultValue default value, if value is null
+     * @return environment optional value
+     */
+    public String getEnv(String key, String defaultValue) {
+<span class="nc" id="L104">        return blade().getEnv(key, defaultValue);</span>
+    }
+
+    public ChannelHandlerContext getChannelHandlerContext() {
+<span class="nc" id="L108">        return channelHandlerContext;</span>
+    }
+
+    public ChannelHandlerContext getHandlerContext() {
+<span class="nc" id="L112">        return channelHandlerContext;</span>
+    }
+
+    public Route getRoute() {
+<span class="nc" id="L116">        return route;</span>
+    }
+
+    public void setRoute(Route route) {
+<span class="nc" id="L120">        this.route = route;</span>
+<span class="nc" id="L121">    }</span>
+
+    /**
+     * Initializes the project when it starts
+     *
+     * @param blade       Blade instance
+     * @param contextPath context path
+     */
+    public static void init(Blade blade, String contextPath) {
+<span class="nc" id="L130">        WebContext.blade = blade;</span>
+<span class="nc" id="L131">        WebContext.contextPath = contextPath;</span>
+<span class="nc" id="L132">    }</span>
+
+    /**
+     * Get current thread context WebContext instance
+     *
+     * @return WebContext instance
+     */
+    public static WebContext get() {
+<span class="nc" id="L140">        return WEB_CONTEXT_THREAD_LOCAL.get();</span>
+    }
+
+    /**
+     * Get current thread context Request instance
+     *
+     * @return Request instance
+     */
+    public static Request request() {
+<span class="nc" id="L149">        var webContext = get();</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        return null != webContext ? webContext.request : null;</span>
+    }
+
+    /**
+     * Get current thread context Response instance
+     *
+     * @return Response instance
+     */
+    public static Response response() {
+<span class="nc" id="L159">        var webContext = get();</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        return null != webContext ? webContext.response : null;</span>
+    }
+
+    public static WebContext create(Request request, Response response, ChannelHandlerContext ctx) {
+<span class="nc" id="L164">        WebContext webContext = new WebContext();</span>
+<span class="nc" id="L165">        webContext.request = request;</span>
+<span class="nc" id="L166">        webContext.response = response;</span>
+<span class="nc" id="L167">        webContext.channelHandlerContext = ctx;</span>
+<span class="nc" id="L168">        WEB_CONTEXT_THREAD_LOCAL.set(webContext);</span>
+<span class="nc" id="L169">        return webContext;</span>
+    }
+
+    public static void set(WebContext webContext) {
+<span class="nc" id="L173">        WEB_CONTEXT_THREAD_LOCAL.set(webContext);</span>
+<span class="nc" id="L174">    }</span>
+
+    public static void remove() {
+<span class="nc" id="L177">        WEB_CONTEXT_THREAD_LOCAL.remove();</span>
+<span class="nc" id="L178">    }</span>
+
+    /**
+     * Get blade instance
+     *
+     * @return return Blade
+     */
+    public static Blade blade() {
+<span class="nc" id="L186">        return blade;</span>
+    }
+
+    /**
+     * Get context path
+     *
+     * @return return context path string, e.g: /
+     */
+    public static String contextPath() {
+<span class="nc" id="L195">        return contextPath;</span>
+    }
+
+    public static void clean() {
+<span class="nc" id="L199">        WEB_CONTEXT_THREAD_LOCAL.remove();</span>
+<span class="nc" id="L200">        blade = null;</span>
+<span class="nc" id="L201">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RouteMethodHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.server</a> &gt; <span class="el_source">RouteMethodHandler.java</span></div><h1>RouteMethodHandler.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.server;
+
+import com.hellokaton.blade.annotation.Path;
+import com.hellokaton.blade.asm.MethodAccess;
+import com.hellokaton.blade.exception.BladeException;
+import com.hellokaton.blade.exception.InternalErrorException;
+import com.hellokaton.blade.exception.NotFoundException;
+import com.hellokaton.blade.kit.*;
+import com.hellokaton.blade.mvc.HttpConst;
+import com.hellokaton.blade.mvc.RouteContext;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.handler.RequestHandler;
+import com.hellokaton.blade.mvc.handler.RouteHandler;
+import com.hellokaton.blade.mvc.hook.WebHook;
+import com.hellokaton.blade.mvc.http.Cookie;
+import com.hellokaton.blade.mvc.http.*;
+import com.hellokaton.blade.mvc.route.Route;
+import com.hellokaton.blade.mvc.route.RouteMatcher;
+import com.hellokaton.blade.mvc.ui.ModelAndView;
+import com.hellokaton.blade.mvc.ui.ResponseType;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.DefaultFileRegion;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.*;
+import lombok.extern.slf4j.Slf4j;
+import lombok.var;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.lang.reflect.Method;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import static com.hellokaton.blade.mvc.BladeConst.REQUEST_TO_STATIC_ATTR;
+import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+
+/**
+ * Http Server Handler
+ *
+ * @author hellokaton
+ * 2022/5/9
+ */
+<span class="nc" id="L50">@Slf4j</span>
+<span class="nc" id="L51">public class RouteMethodHandler implements RequestHandler {</span>
+
+<span class="nc" id="L53">    private final RouteMatcher routeMatcher = WebContext.blade().routeMatcher();</span>
+<span class="nc" id="L54">    private final boolean hasBeforeHook = routeMatcher.hasBeforeHook();</span>
+<span class="nc" id="L55">    private final boolean hasAfterHook = routeMatcher.hasAfterHook();</span>
+
+    @Override
+    public void handle(WebContext webContext) throws Exception {
+<span class="nc" id="L59">        RouteContext context = new RouteContext(webContext.getRequest(), webContext.getResponse());</span>
+
+        // if execution returns false then execution is interrupted
+<span class="nc" id="L62">        String uri = context.uri();</span>
+<span class="nc" id="L63">        Route route = webContext.getRoute();</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (null == route) {</span>
+<span class="nc" id="L65">            throw new NotFoundException(context.uri());</span>
+        }
+
+        // init route, request parameters, route action method and parameter.
+<span class="nc" id="L69">        context.initRoute(route);</span>
+
+        // execution middleware
+<span class="nc bnc" id="L72" title="All 4 branches missed.">        if (routeMatcher.middlewareCount() &gt; 0 &amp;&amp; !invokeMiddleware(routeMatcher.getMiddleware(), context)) {</span>
+<span class="nc" id="L73">            return;</span>
+        }
+<span class="nc" id="L75">        context.injectParameters();</span>
+
+        // web hook before
+<span class="nc bnc" id="L78" title="All 4 branches missed.">        if (hasBeforeHook &amp;&amp; !invokeHook(routeMatcher.getBefore(uri), context)) {</span>
+<span class="nc" id="L79">            return;</span>
+        }
+
+        // execute
+<span class="nc" id="L83">        this.routeHandle(context);</span>
+
+        // webHook
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (hasAfterHook) {</span>
+<span class="nc" id="L87">            this.invokeHook(routeMatcher.getAfter(uri), context);</span>
+        }
+<span class="nc" id="L89">    }</span>
+
+    public HttpResponse handleResponse(WebContext webContext) {
+<span class="nc" id="L92">        Request request = webContext.getRequest();</span>
+<span class="nc" id="L93">        Response response = webContext.getResponse();</span>
+<span class="nc" id="L94">        ChannelHandlerContext context = webContext.getChannelHandlerContext();</span>
+
+<span class="nc" id="L96">        Session session = request.session();</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (null != session) {</span>
+<span class="nc" id="L98">            Cookie cookie = new Cookie();</span>
+<span class="nc" id="L99">            cookie.name(WebContext.blade().httpOptions().getSessionKey());</span>
+<span class="nc" id="L100">            cookie.value(session.id());</span>
+<span class="nc" id="L101">            cookie.httpOnly(true);</span>
+<span class="nc" id="L102">            cookie.secure(request.isSecure());</span>
+<span class="nc" id="L103">            response.cookie(cookie);</span>
+        }
+
+<span class="nc" id="L106">        return response.body().write(new BodyWriter() {</span>
+
+            @Override
+            public HttpResponse onByteBuf(ByteBuf byteBuf) {
+<span class="nc" id="L110">                return createResponseByByteBuf(response, byteBuf);</span>
+            }
+
+            @Override
+            public HttpResponse onView(ViewBody body) {
+                try {
+<span class="nc" id="L116">                    var sw = new StringWriter();</span>
+<span class="nc" id="L117">                    WebContext.blade().templateEngine().render(body.modelAndView(), sw);</span>
+<span class="nc" id="L118">                    Objects.requireNonNull(WebContext.response())</span>
+<span class="nc" id="L119">                            .contentType(HttpConst.CONTENT_TYPE_HTML);</span>
+<span class="nc" id="L120">                    return this.onByteBuf(Unpooled.copiedBuffer(sw.toString().getBytes(StandardCharsets.UTF_8)));</span>
+<span class="nc" id="L121">                } catch (Exception e) {</span>
+<span class="nc" id="L122">                    log.error(&quot;Render view error&quot;, e);</span>
+                }
+<span class="nc" id="L124">                return null;</span>
+            }
+
+            @Override
+            public HttpResponse onStatic(StaticFileBody body) {
+<span class="nc" id="L129">                request.attribute(REQUEST_TO_STATIC_ATTR, body.path());</span>
+                try {
+<span class="nc" id="L131">                    HttpServerHandler.staticFileHandler.handle(webContext);</span>
+<span class="nc" id="L132">                } catch (Exception e) {</span>
+<span class="nc" id="L133">                    throw new RuntimeException(e);</span>
+<span class="nc" id="L134">                }</span>
+<span class="nc" id="L135">                return null;</span>
+            }
+
+            @Override
+            public HttpResponse onRawBody(RawBody body) {
+<span class="nc" id="L140">                return body.httpResponse();</span>
+            }
+
+            @Override
+            public HttpResponse onByteBuf(String fileName, FileChannel channel) {
+<span class="nc" id="L145">                var httpResponse = new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.valueOf(response.statusCode()));</span>
+
+<span class="nc" id="L147">                httpResponse.headers().set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);</span>
+<span class="nc" id="L148">                setDefaultHeaders(httpResponse.headers());</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">                for (Map.Entry&lt;String, String&gt; next : response.headers().entrySet()) {</span>
+<span class="nc" id="L150">                    httpResponse.headers().set(next.getKey(), next.getValue());</span>
+<span class="nc" id="L151">                }</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                if (request.keepAlive()) {</span>
+<span class="nc" id="L153">                    httpResponse.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);</span>
+                }
+                String mimeType;
+<span class="nc bnc" id="L156" title="All 4 branches missed.">                if (!httpResponse.headers().contains(HttpConst.HEADER_CONTENT_TYPE) &amp;&amp; StringKit.isNotEmpty(fileName)) {</span>
+<span class="nc" id="L157">                    mimeType = MimeTypeKit.parse(fileName);</span>
+<span class="nc" id="L158">                    httpResponse.headers().set(HttpHeaderNames.CONTENT_TYPE, mimeType);</span>
+                }
+                long length;
+                try {
+<span class="nc" id="L162">                    length = channel.size();</span>
+<span class="nc" id="L163">                } catch (IOException e) {</span>
+<span class="nc" id="L164">                    log.error(&quot;Read file {} length error&quot;, fileName, e);</span>
+<span class="nc" id="L165">                    context.writeAndFlush(httpResponse);</span>
+<span class="nc" id="L166">                    return httpResponse;</span>
+<span class="nc" id="L167">                }</span>
+
+<span class="nc" id="L169">                httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH, length);</span>
+
+<span class="nc" id="L171">                context.write(httpResponse);</span>
+
+<span class="nc" id="L173">                DefaultFileRegion fileRegion = new DefaultFileRegion(channel, 0, length);</span>
+<span class="nc" id="L174">                ChannelFuture sendFileFuture = context.write(fileRegion, context.newProgressivePromise());</span>
+<span class="nc" id="L175">                sendFileFuture.addListener(ProgressiveFutureListener.create(fileName, channel));</span>
+<span class="nc" id="L176">                context.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);</span>
+<span class="nc" id="L177">                return httpResponse;</span>
+            }
+        });
+    }
+
+    private void setDefaultHeaders(HttpHeaders headers) {
+<span class="nc" id="L183">        headers.set(HttpHeaderNames.DATE, HttpServerInitializer.date);</span>
+<span class="nc" id="L184">        headers.set(HttpHeaderNames.SERVER, HttpConst.HEADER_SERVER_VALUE);</span>
+<span class="nc" id="L185">    }</span>
+
+    private FullHttpResponse createResponseByByteBuf(Response response, ByteBuf byteBuf) {
+<span class="nc" id="L188">        Map&lt;String, String&gt; headers = response.headers();</span>
+
+<span class="nc" id="L190">        var httpResponse = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.valueOf(response.statusCode()), byteBuf);</span>
+
+<span class="nc" id="L192">        httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH, httpResponse.content().readableBytes());</span>
+<span class="nc" id="L193">        setDefaultHeaders(httpResponse.headers());</span>
+
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if (response.cookiesRaw().size() &gt; 0) {</span>
+<span class="nc" id="L196">            this.appendCookie(response, httpResponse);</span>
+        }
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        for (Map.Entry&lt;String, String&gt; next : headers.entrySet()) {</span>
+<span class="nc" id="L200">            httpResponse.headers().set(next.getKey(), next.getValue());</span>
+<span class="nc" id="L201">        }</span>
+<span class="nc" id="L202">        return httpResponse;</span>
+    }
+
+    private void appendCookie(Response response, DefaultFullHttpResponse httpResponse) {
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        for (io.netty.handler.codec.http.cookie.Cookie next : response.cookiesRaw()) {</span>
+<span class="nc" id="L207">            httpResponse.headers().add(HttpHeaderNames.SET_COOKIE,</span>
+<span class="nc" id="L208">                    io.netty.handler.codec.http.cookie.ServerCookieEncoder.LAX.encode(next));</span>
+<span class="nc" id="L209">        }</span>
+<span class="nc" id="L210">    }</span>
+
+    /**
+     * Actual routing method execution
+     *
+     * @param context route context
+     */
+    private void routeHandle(RouteContext context) {
+<span class="nc" id="L218">        Object target = context.routeTarget();</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        if (null == target) {</span>
+<span class="nc" id="L220">            Class&lt;?&gt; clazz = context.routeAction().getDeclaringClass();</span>
+<span class="nc" id="L221">            target = WebContext.blade().getBean(clazz);</span>
+        }
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        if (context.targetType() == RouteHandler.class) {</span>
+<span class="nc" id="L224">            RouteHandler routeHandler = (RouteHandler) target;</span>
+<span class="nc" id="L225">            routeHandler.handle(context);</span>
+<span class="nc" id="L226">        } else {</span>
+<span class="nc" id="L227">            Method actionMethod = context.routeAction();</span>
+<span class="nc" id="L228">            Class&lt;?&gt; returnType = actionMethod.getReturnType();</span>
+
+<span class="nc" id="L230">            Path path = target.getClass().getAnnotation(Path.class);</span>
+
+<span class="nc" id="L232">            ResponseType responseType = ResponseType.EMPTY;</span>
+<span class="nc bnc" id="L233" title="All 4 branches missed.">            if (null != path &amp;&amp; !ResponseType.EMPTY.equals(path.responseType())) {</span>
+<span class="nc" id="L234">                responseType = path.responseType();</span>
+            }
+<span class="nc" id="L236">            ResponseType routeResponseType = context.route().getResponseType();</span>
+<span class="nc bnc" id="L237" title="All 4 branches missed.">            if (null != routeResponseType &amp;&amp; !ResponseType.EMPTY.equals(routeResponseType)) {</span>
+<span class="nc" id="L238">                responseType = routeResponseType;</span>
+            }
+
+<span class="nc" id="L241">            boolean responseJson = ResponseType.JSON.equals(responseType);</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">            if (responseJson) {</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">                if (!context.isIE()) {</span>
+<span class="nc" id="L244">                    context.contentType(HttpConst.CONTENT_TYPE_JSON);</span>
+                } else {
+<span class="nc" id="L246">                    context.contentType(HttpConst.CONTENT_TYPE_HTML);</span>
+                }
+<span class="nc bnc" id="L248" title="All 4 branches missed.">            } else if (null != responseType &amp;&amp; !ResponseType.EMPTY.equals(responseType)</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">                    &amp;&amp; !ResponseType.PREVIEW.equals(responseType)) {</span>
+<span class="nc" id="L250">                context.contentType(responseType.contentType());</span>
+            }
+
+<span class="nc" id="L253">            int len = actionMethod.getParameterTypes().length;</span>
+
+<span class="nc" id="L255">            MethodAccess methodAccess = BladeCache.getMethodAccess(target.getClass());</span>
+
+<span class="nc bnc" id="L257" title="All 2 branches missed.">            Object[] args = len &gt; 0 ? context.routeParameters() : null;</span>
+
+<span class="nc" id="L259">            Object returnParam = methodAccess.invoke(target, actionMethod.getName(), args);</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">            if (null == returnParam) {</span>
+<span class="nc" id="L261">                return;</span>
+            }
+
+<span class="nc bnc" id="L264" title="All 2 branches missed.">            if (responseJson) {</span>
+<span class="nc" id="L265">                context.json(returnParam);</span>
+<span class="nc" id="L266">                return;</span>
+            }
+<span class="nc bnc" id="L268" title="All 2 branches missed.">            if (returnType == String.class) {</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">                if (ResponseType.VIEW.equals(responseType)) {</span>
+<span class="nc" id="L270">                    context.body(</span>
+<span class="nc" id="L271">                            ViewBody.of(new ModelAndView(returnParam.toString()))</span>
+                    );
+<span class="nc bnc" id="L273" title="All 2 branches missed.">                } else if (ResponseType.HTML.equals(responseType)) {</span>
+<span class="nc" id="L274">                    context.html(returnParam.toString());</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">                } else if (ResponseType.TEXT.equals(responseType)) {</span>
+<span class="nc" id="L276">                    context.text(returnParam.toString());</span>
+                }
+<span class="nc" id="L278">                return;</span>
+            }
+<span class="nc bnc" id="L280" title="All 2 branches missed.">            if (returnType == ModelAndView.class) {</span>
+<span class="nc" id="L281">                context.body(</span>
+<span class="nc" id="L282">                        ViewBody.of((ModelAndView) returnParam)</span>
+                );
+            }
+<span class="nc bnc" id="L285" title="All 2 branches missed.">            if (returnType == StaticFileBody.class) {</span>
+<span class="nc" id="L286">                context.body((StaticFileBody) returnParam);</span>
+            }
+        }
+<span class="nc" id="L289">    }</span>
+
+    /**
+     * Invoke WebHook
+     *
+     * @param context   current execute route handler signature
+     * @param hookRoute current webhook route handler
+     * @return Return true then next handler, and else interrupt request
+     * @throws Exception throw like parse param exception
+     */
+    private boolean invokeHook(RouteContext context, Route hookRoute) throws Exception {
+<span class="nc" id="L300">        Method hookMethod = hookRoute.getAction();</span>
+<span class="nc" id="L301">        Object target = WebContext.blade().ioc().getBean(hookRoute.getTargetType());</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">        if (null == target) {</span>
+<span class="nc" id="L303">            Class&lt;?&gt; clazz = hookRoute.getAction().getDeclaringClass();</span>
+<span class="nc" id="L304">            target = WebContext.blade().ioc().getBean(clazz);</span>
+<span class="nc" id="L305">            hookRoute.setTarget(target);</span>
+        }
+
+        // execute
+<span class="nc" id="L309">        int len = hookMethod.getParameterTypes().length;</span>
+<span class="nc" id="L310">        hookMethod.setAccessible(true);</span>
+
+        Object returnParam;
+<span class="nc bnc" id="L313" title="All 2 branches missed.">        if (len &gt; 0) {</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">            if (len == 1) {</span>
+<span class="nc" id="L315">                MethodAccess methodAccess = BladeCache.getMethodAccess(target.getClass());</span>
+<span class="nc" id="L316">                returnParam = methodAccess.invoke(target, hookMethod.getName(), context);</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">            } else if (len == 2) {</span>
+<span class="nc" id="L318">                MethodAccess methodAccess = BladeCache.getMethodAccess(target.getClass());</span>
+
+<span class="nc" id="L320">                returnParam = methodAccess.invoke(target, hookMethod.getName(),</span>
+<span class="nc" id="L321">                        context.request(), context.response());</span>
+<span class="nc" id="L322">            } else {</span>
+<span class="nc" id="L323">                throw new InternalErrorException(&quot;Bad web hook structure&quot;);</span>
+            }
+        } else {
+<span class="nc" id="L326">            returnParam = ReflectKit.invokeMethod(target, hookMethod);</span>
+        }
+
+<span class="nc bnc" id="L329" title="All 2 branches missed.">        if (null == returnParam) return true;</span>
+
+<span class="nc" id="L331">        Class&lt;?&gt; returnType = returnParam.getClass();</span>
+<span class="nc bnc" id="L332" title="All 2 branches missed.">        if (returnType == Boolean.class) {</span>
+<span class="nc" id="L333">            return Boolean.parseBoolean(returnParam.toString());</span>
+        }
+<span class="nc" id="L335">        return true;</span>
+    }
+
+    private boolean invokeMiddleware(List&lt;Route&gt; middleware, RouteContext context) throws BladeException {
+<span class="nc bnc" id="L339" title="All 2 branches missed.">        if (BladeKit.isEmpty(middleware)) {</span>
+<span class="nc" id="L340">            return true;</span>
+        }
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        for (Route route : middleware) {</span>
+<span class="nc" id="L343">            WebHook webHook = (WebHook) WebContext.blade().ioc().getBean(route.getTargetType());</span>
+<span class="nc" id="L344">            boolean flag = webHook.before(context);</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">            if (!flag) return false;</span>
+<span class="nc" id="L346">        }</span>
+<span class="nc" id="L347">        return true;</span>
+    }
+
+    /**
+     * invoke hooks
+     *
+     * @param hooks   webHook list
+     * @param context http request
+     * @return return invoke hook is abort
+     */
+    private boolean invokeHook(List&lt;Route&gt; hooks, RouteContext context) throws Exception {
+<span class="nc bnc" id="L358" title="All 2 branches missed.">        for (Route hook : hooks) {</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">            if (hook.getTargetType() == RouteHandler.class) {</span>
+<span class="nc" id="L360">                RouteHandler routeHandler = (RouteHandler) hook.getTarget();</span>
+<span class="nc" id="L361">                routeHandler.handle(context);</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">                if (context.isAbort()) {</span>
+<span class="nc" id="L363">                    return false;</span>
+                }
+<span class="nc" id="L365">            } else {</span>
+<span class="nc" id="L366">                boolean flag = this.invokeHook(context, hook);</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">                if (!flag) return false;</span>
+            }
+<span class="nc" id="L369">        }</span>
+<span class="nc" id="L370">        return true;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

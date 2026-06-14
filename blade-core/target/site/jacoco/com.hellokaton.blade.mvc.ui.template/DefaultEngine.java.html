@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DefaultEngine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.ui.template</a> &gt; <span class="el_source">DefaultEngine.java</span></div><h1>DefaultEngine.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.ui.template;
+
+import com.hellokaton.blade.exception.TemplateException;
+import com.hellokaton.blade.kit.BladeKit;
+import com.hellokaton.blade.kit.IOKit;
+import com.hellokaton.blade.mvc.BladeConst;
+import com.hellokaton.blade.mvc.WebContext;
+import com.hellokaton.blade.mvc.http.Request;
+import com.hellokaton.blade.mvc.http.Session;
+import com.hellokaton.blade.mvc.ui.ModelAndView;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * default template implment
+ *
+ * @author biezhi
+ * 2017/5/31
+ */
+<span class="nc" id="L23">@Slf4j</span>
+<span class="nc" id="L24">public class DefaultEngine implements TemplateEngine {</span>
+
+<span class="nc" id="L26">    public  static       String TEMPLATE_PATH = &quot;templates&quot;;</span>
+    private static final String PATH_SEPARATOR = &quot;/&quot;;
+
+    @Override
+    public void render(ModelAndView modelAndView, Writer writer) throws TemplateException {
+<span class="nc" id="L31">        String view = modelAndView.getView();</span>
+        String body;
+
+        String viewPath;
+<span class="nc bnc" id="L35" title="All 2 branches missed.">        if (BladeConst.CLASSPATH.endsWith(PATH_SEPARATOR)) {</span>
+<span class="nc" id="L36">            viewPath = BladeConst.CLASSPATH + TEMPLATE_PATH + PATH_SEPARATOR + view;</span>
+        } else {
+<span class="nc" id="L38">            viewPath = BladeConst.CLASSPATH + PATH_SEPARATOR + TEMPLATE_PATH + PATH_SEPARATOR + view;</span>
+        }
+
+        try {
+<span class="nc bnc" id="L42" title="All 2 branches missed.">            if (view.startsWith(&quot;jar:&quot;)) {</span>
+<span class="nc" id="L43">                String         jarPath = view.substring(4);</span>
+<span class="nc" id="L44">                InputStream    input   = DefaultEngine.class.getResourceAsStream(jarPath);</span>
+<span class="nc" id="L45">                BufferedReader reader  = new BufferedReader(new InputStreamReader(input));</span>
+<span class="nc" id="L46">                body = IOKit.readToString(reader);</span>
+<span class="nc" id="L47">            } else {</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">                if (BladeKit.runtimeIsJAR()) {</span>
+<span class="nc" id="L49">                    viewPath = PATH_SEPARATOR + TEMPLATE_PATH + PATH_SEPARATOR + view;</span>
+
+<span class="nc" id="L51">                    InputStream    in     = getClass().getResourceAsStream(viewPath);</span>
+<span class="nc" id="L52">                    BufferedReader reader = new BufferedReader(new InputStreamReader(in));</span>
+<span class="nc" id="L53">                    body = IOKit.readToString(reader);</span>
+<span class="nc" id="L54">                } else {</span>
+<span class="nc" id="L55">                    body = IOKit.readToString(viewPath);</span>
+                }
+            }
+
+<span class="nc" id="L59">            Request request = WebContext.request();</span>
+
+<span class="nc" id="L61">            Map&lt;String, Object&gt; attributes = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L62">            Map&lt;String, Object&gt; reqAttrs   = request.attributes();</span>
+<span class="nc" id="L63">            attributes.putAll(reqAttrs);</span>
+<span class="nc" id="L64">            attributes.putAll(modelAndView.getModel());</span>
+
+<span class="nc" id="L66">            Session session = request.session();</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">            if (null != session) {</span>
+<span class="nc" id="L68">                attributes.putAll(session.attributes());</span>
+            }
+<span class="nc" id="L70">            String result = BladeTemplate.template(body, attributes).fmt();</span>
+<span class="nc" id="L71">            writer.write(result);</span>
+<span class="nc" id="L72">        } catch (Exception e) {</span>
+<span class="nc" id="L73">            log.warn(&quot;View path is: {}&quot;, viewPath);</span>
+<span class="nc" id="L74">            throw new TemplateException(e);</span>
+        } finally {
+<span class="nc" id="L76">            IOKit.closeQuietly(writer);</span>
+        }
+<span class="nc" id="L78">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

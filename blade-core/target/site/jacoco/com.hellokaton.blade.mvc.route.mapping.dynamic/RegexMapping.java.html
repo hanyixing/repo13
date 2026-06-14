@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegexMapping.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">blade-core</a> &gt; <a href="index.source.html" class="el_package">com.hellokaton.blade.mvc.route.mapping.dynamic</a> &gt; <span class="el_source">RegexMapping.java</span></div><h1>RegexMapping.java</h1><pre class="source lang-java linenums">package com.hellokaton.blade.mvc.route.mapping.dynamic;
+
+import com.hellokaton.blade.mvc.http.HttpMethod;
+import com.hellokaton.blade.mvc.route.DynamicMapping;
+import com.hellokaton.blade.mvc.route.PathRegexBuilder;
+import com.hellokaton.blade.mvc.route.Route;
+import com.hellokaton.blade.mvc.route.mapping.FastRouteMappingInfo;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static com.hellokaton.blade.kit.BladeKit.isWebHook;
+
+/**
+ * Regex Route Mapping
+ *
+ * @author biezhi
+ * @date 2018/10/16
+ */
+@Deprecated
+<span class="nc" id="L27">@Slf4j</span>
+<span class="nc" id="L28">@NoArgsConstructor</span>
+public class RegexMapping implements DynamicMapping {
+
+<span class="nc" id="L31">    private Map&lt;HttpMethod, Map&lt;Integer, FastRouteMappingInfo&gt;&gt; regexRoutes = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L32">    private Map&lt;HttpMethod, Pattern&gt; regexRoutePatterns = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L33">    private Map&lt;HttpMethod, Integer&gt; indexes = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L34">    private Map&lt;HttpMethod, StringBuilder&gt; patternBuilders = new HashMap&lt;&gt;();</span>
+
+    @Override
+    public void addRoute(HttpMethod httpMethod, Route route, List&lt;String&gt; uriVariableNames) {
+<span class="nc" id="L38">        String path = route.getPath();</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">        if (regexRoutes.get(httpMethod) == null) {</span>
+<span class="nc" id="L40">            regexRoutes.put(httpMethod, new HashMap&lt;&gt;());</span>
+<span class="nc" id="L41">            patternBuilders.put(httpMethod, new StringBuilder(&quot;^&quot;));</span>
+<span class="nc" id="L42">            indexes.put(httpMethod, 1);</span>
+        }
+<span class="nc" id="L44">        int i = indexes.get(httpMethod);</span>
+<span class="nc" id="L45">        regexRoutes.get(httpMethod).put(i, new FastRouteMappingInfo(route, uriVariableNames));</span>
+<span class="nc" id="L46">        indexes.put(httpMethod, i + uriVariableNames.size() + 1);</span>
+<span class="nc" id="L47">        patternBuilders.get(httpMethod).append(new PathRegexBuilder().parsePath(path));</span>
+<span class="nc" id="L48">    }</span>
+
+    @Override
+    public void register() {
+<span class="nc" id="L52">        patternBuilders.keySet().stream()</span>
+<span class="nc" id="L53">                .filter(this::notIsWebHook)</span>
+<span class="nc" id="L54">                .forEach(this::registerRoutePatterns);</span>
+<span class="nc" id="L55">    }</span>
+
+
+    @Override
+    public Route findRoute(String httpMethod, String path) {
+<span class="nc" id="L60">        Map&lt;String, String&gt; uriVariables = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="nc" id="L62">        HttpMethod requestMethod = HttpMethod.valueOf(httpMethod);</span>
+        try {
+<span class="nc" id="L64">            Pattern pattern = findPattern(requestMethod);</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">            if (null == pattern) {</span>
+<span class="nc" id="L66">                pattern = findPattern(HttpMethod.ALL);</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">                if (null != pattern) {</span>
+<span class="nc" id="L68">                    requestMethod = HttpMethod.ALL;</span>
+                }
+            }
+<span class="nc bnc" id="L71" title="All 2 branches missed.">            if (null == pattern) {</span>
+<span class="nc" id="L72">                return null;</span>
+            }
+<span class="nc" id="L74">            Matcher matcher = null;</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">            if (path != null) {</span>
+<span class="nc" id="L76">                matcher = pattern.matcher(path);</span>
+            }
+<span class="nc" id="L78">            boolean matched = false;</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            if (matcher != null) {</span>
+<span class="nc" id="L80">                matched = matcher.matches();</span>
+            }
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if (!matched) {</span>
+<span class="nc" id="L83">                requestMethod = HttpMethod.ALL;</span>
+<span class="nc" id="L84">                pattern = findPattern(requestMethod);</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">                if (null == pattern) {</span>
+<span class="nc" id="L86">                    return null;</span>
+                }
+<span class="nc bnc" id="L88" title="All 2 branches missed.">                if (path != null) {</span>
+<span class="nc" id="L89">                    matcher = pattern.matcher(path);</span>
+                }
+<span class="nc bnc" id="L91" title="All 4 branches missed.">                matched = matcher != null &amp;&amp; matcher.matches();</span>
+            }
+<span class="nc" id="L93">            Route route = null;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">            if (matched) {</span>
+                int i;
+<span class="nc bnc" id="L96" title="All 2 branches missed.">                for (i = 1; matcher.group(i) == null; i++) ;</span>
+<span class="nc" id="L97">                FastRouteMappingInfo mappingInfo = findMappingInfo(requestMethod, i);</span>
+<span class="nc" id="L98">                route = new Route(mappingInfo.getRoute());</span>
+
+                // find path variable
+                String uriVariable;
+<span class="nc" id="L102">                int j = 0;</span>
+<span class="nc bnc" id="L103" title="All 4 branches missed.">                while (++i &lt;= matcher.groupCount() &amp;&amp; (uriVariable = matcher.group(i)) != null) {</span>
+<span class="nc" id="L104">                    String pathVariable = cleanPathVariable(mappingInfo.getVariableNames().get(j++));</span>
+<span class="nc" id="L105">                    uriVariables.put(pathVariable, uriVariable);</span>
+<span class="nc" id="L106">                }</span>
+<span class="nc" id="L107">                route.setPathParams(uriVariables);</span>
+<span class="nc" id="L108">                log.trace(&quot;lookup path: &quot; + path + &quot; uri variables: &quot; + uriVariables);</span>
+            }
+<span class="nc" id="L110">            return route;</span>
+<span class="nc" id="L111">        } catch (Exception e) {</span>
+<span class="nc" id="L112">            throw e;</span>
+        }
+    }
+
+    @Override
+    public void clear() {
+<span class="nc" id="L118">        regexRoutes.clear();</span>
+<span class="nc" id="L119">        regexRoutePatterns.clear();</span>
+<span class="nc" id="L120">        indexes.clear();</span>
+<span class="nc" id="L121">        patternBuilders.clear();</span>
+<span class="nc" id="L122">    }</span>
+
+    private FastRouteMappingInfo findMappingInfo(HttpMethod httpMethod, int index) {
+<span class="nc" id="L125">        return regexRoutes.get(httpMethod).get(index);</span>
+    }
+
+    private void registerRoutePatterns(HttpMethod httpMethod) {
+<span class="nc" id="L129">        StringBuilder patternBuilder = patternBuilders.get(httpMethod);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (patternBuilder.length() &gt; 1) {</span>
+<span class="nc" id="L131">            patternBuilder.setCharAt(patternBuilder.length() - 1, '$');</span>
+        }
+<span class="nc" id="L133">        log.debug(&quot;Fast Route Method: {}, regex: {}&quot;, httpMethod, patternBuilder);</span>
+<span class="nc" id="L134">        regexRoutePatterns.put(httpMethod, Pattern.compile(patternBuilder.toString()));</span>
+<span class="nc" id="L135">    }</span>
+
+    private String cleanPathVariable(String pathVariable) {
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (pathVariable.contains(&quot;.&quot;)) {</span>
+<span class="nc" id="L139">            return pathVariable.substring(0, pathVariable.indexOf('.'));</span>
+        }
+<span class="nc" id="L141">        return pathVariable;</span>
+    }
+
+    private Pattern findPattern(HttpMethod requestMethod) {
+<span class="nc" id="L145">        return regexRoutePatterns.get(requestMethod);</span>
+    }
+
+    private boolean notIsWebHook(HttpMethod httpMethod) {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        return !isWebHook(httpMethod);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
