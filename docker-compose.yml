@@ -1,0 +1,44 @@
+# Orchestrates the blade-examples demo service.
+#
+#   docker compose up -d --build      # build image + start
+#   docker compose ps                 # check health
+#   docker compose logs -f blade-app  # tail logs
+#   docker compose down               # stop + remove
+#
+# Switch profile by exporting BLADE_ENV (dev|test|prod) before `up`.
+
+services:
+  blade-app:
+    build:
+      context: .
+      dockerfile: blade-examples/Dockerfile
+    image: blade-examples:latest
+    container_name: blade-examples
+    environment:
+      BLADE_ENV: ${BLADE_ENV:-prod}
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9001/hello"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - blade-net
+
+  # Add backing services here as the example grows, e.g.:
+  # db:
+  #   image: mysql:8
+  #   environment:
+  #     MYSQL_DATABASE: blade
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-CHANGE_ME}
+  #   networks:
+  #     - blade-net
+
+networks:
+  blade-net:
+    driver: bridge

@@ -1,0 +1,45 @@
+name: Release to Maven Central
+
+# Triggers on a published GitHub Release or a pushed v* tag.
+#
+# Required repository secrets:
+#   OSSRH_USERNAME   - Sonatype OSSRH (s01) user token name
+#   OSSRH_TOKEN      - Sonatype OSSRH (s01) user token password
+#   GPG_PRIVATE_KEY  - ASCII-armored private key used to sign artifacts
+#   GPG_PASSPHRASE   - passphrase for the GPG key
+#
+# Deploy uses the `release` profile (source + javadoc + gpg sign +
+# nexus-staging auto-release) defined in the root pom.xml.
+
+on:
+  release:
+    types: [published]
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8, OSSRH auth and GPG
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+          # Maps the `ossrh` <server> in the generated settings.xml to the env vars below.
+          server-id: ossrh
+          server-username: OSSRH_USERNAME
+          server-password: OSSRH_TOKEN
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Deploy to OSSRH (auto-released to Maven Central)
+        run: mvn -B -P release -DskipTests deploy
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

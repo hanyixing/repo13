@@ -9,53 +9,60 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>blade-examples</artifactId>
+    <artifactId>blade-benchmark</artifactId>
+    <name>blade-benchmark</name>
+    <description>JMH benchmarks for the Blade framework. Not published to Maven Central.</description>
 
     <properties>
+        <!-- Benchmarks are a build-time tool, never deploy them -->
         <maven.deploy.skip>true</maven.deploy.skip>
+        <jmh.version>1.36</jmh.version>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.hellokaton</groupId>
-            <artifactId>blade-core</artifactId>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-core</artifactId>
+            <version>${jmh.version}</version>
         </dependency>
+        <!-- Annotation processor that generates the JMH benchmark metadata -->
         <dependency>
-            <groupId>com.hellokaton</groupId>
-            <artifactId>blade-security</artifactId>
-            <version>2.1.2.RELEASE</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-generator-annprocess</artifactId>
+            <version>${jmh.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- Code under benchmark -->
+        <dependency>
+            <groupId>com.hellokaton</groupId>
+            <artifactId>blade-kit</artifactId>
         </dependency>
     </dependencies>
 
     <build>
-        <!-- Predictable artifact name so the Dockerfile can copy target/blade-examples.jar -->
-        <finalName>blade-examples</finalName>
+        <finalName>benchmarks</finalName>
         <plugins>
-            <!-- Build a single runnable fat jar (java -jar target/blade-examples.jar) -->
+            <!-- Package a self-contained, runnable benchmarks.jar (java -jar target/benchmarks.jar) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.2.4</version>
                 <executions>
                     <execution>
-                        <id>shade-runnable-jar</id>
+                        <id>make-benchmarks</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <finalName>benchmarks</finalName>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.example.Application</mainClass>
+                                    <mainClass>org.openjdk.jmh.Main</mainClass>
                                 </transformer>
-                                <!-- Merge META-INF/services so Netty SPI keeps working -->
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>

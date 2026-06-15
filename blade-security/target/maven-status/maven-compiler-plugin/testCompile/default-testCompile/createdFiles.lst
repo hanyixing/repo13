@@ -1,0 +1,6 @@
+com\hellokaton\blade\security\BasicAuthMiddlewareTest.class
+com\hellokaton\blade\security\HTMLFilterTest.class
+com\hellokaton\blade\security\BaseTestCase.class
+com\hellokaton\blade\security\BasicAuthMiddlewareTest$AuthHandler.class
+com\hellokaton\blade\security\HTMLFilterTest$1.class
+com\hellokaton\blade\security\JwtTest.class

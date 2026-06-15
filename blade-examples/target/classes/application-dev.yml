@@ -1,0 +1,14 @@
+# NOTE: Blade loads application-dev.properties (Java Properties format), NOT this file.
+# This YAML mirror exists for readability and tooling; keep it in sync with the .properties.
+app:
+  env: dev
+  name: blade-examples (dev)
+  show-banner: true
+server:
+  port: 9001
+log:
+  level: DEBUG
+datasource:
+  url: jdbc:mysql://localhost:3306/blade_dev
+  username: dev
+  password: dev123

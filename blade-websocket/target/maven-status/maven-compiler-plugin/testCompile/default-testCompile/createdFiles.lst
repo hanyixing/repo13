@@ -1,0 +1,5 @@
+com\hellokaton\blade\websocket\CustomWebSocketHandlerAnno.class
+com\hellokaton\blade\websocket\CService.class
+com\hellokaton\blade\websocket\CustomWebSocketHandler.class
+com\hellokaton\blade\websocket\BaseWebSocketHandler.class
+com\hellokaton\blade\websocket\WebSocketDemo.class

@@ -1,0 +1,15 @@
+# NOTE: Blade loads application-prod.properties (Java Properties format), NOT this file.
+# This YAML mirror exists for readability and tooling; keep it in sync with the .properties.
+# Do NOT commit real secrets; the placeholders below mirror the .properties file.
+app:
+  env: prod
+  name: blade-examples
+  show-banner: false
+server:
+  port: 9001
+log:
+  level: WARN
+datasource:
+  url: jdbc:mysql://prod-db:3306/blade
+  username: blade
+  password: CHANGE_ME

@@ -1,0 +1,14 @@
+# NOTE: Blade loads application-test.properties (Java Properties format), NOT this file.
+# This YAML mirror exists for readability and tooling; keep it in sync with the .properties.
+app:
+  env: test
+  name: blade-examples (test)
+  show-banner: false
+server:
+  port: 9001
+log:
+  level: INFO
+datasource:
+  url: jdbc:mysql://test-db:3306/blade_test
+  username: test
+  password: test123

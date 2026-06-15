@@ -47,3 +47,12 @@ fabric.properties
 /target/
 
 .vscode/
+
+# Local secrets & runtime artifacts (never commit real credentials)
+.env
+*.pid
+blade.pid
+logs/
+*-local.properties
+*-local.yml
+application-secret.*
