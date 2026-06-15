@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  blade-app:
+    build:
+      context: .
+      dockerfile: blade-examples/Dockerfile
+    container_name: blade-examples
+    ports:
+      - "9005:9005"
+    environment:
+      - BLADE_ENV=prod
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
+    volumes:
+      - ./blade-examples/src/main/resources/application-prod.yml:/app/config/application-prod.yml:ro
+      - blade-logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9005/hello"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - blade-network
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Development service with hot-reload friendly settings
+  blade-app-dev:
+    build:
+      context: .
+      dockerfile: blade-examples/Dockerfile
+    container_name: blade-examples-dev
+    profiles:
+      - dev
+    environment:
+      - BLADE_ENV=dev
+      - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005
+    volumes:
+      - ./blade-examples/src/main/resources:/app/config:ro
+      - blade-logs:/app/logs
+    ports:
+      - "9005:9005"
+      - "5005:5005"
+    networks:
+      - blade-network
+
+volumes:
+  blade-logs:
+    driver: local
+
+networks:
+  blade-network:
+    driver: bridge

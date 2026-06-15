@@ -1,0 +1,13 @@
+.git
+.gitignore
+.github
+.idea
+*.iml
+*.md
+LICENSE
+.travis.yml
+.claude
+blade-benchmark/target
+**/target/
+!blade-examples/target/*.jar
+*.log

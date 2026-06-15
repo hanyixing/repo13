@@ -1,0 +1,153 @@
+name: Blade CI
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    name: Build & Test (JDK ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [ 8, 11 ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean compile -B
+
+      - name: Run tests with JaCoCo coverage
+        run: mvn test -B
+
+      - name: Generate JaCoCo report
+        run: mvn jacoco:report -B
+        if: matrix.java == 8
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.java == 8
+        with:
+          files: blade-core/target/site/jacoco/jacoco.xml,blade-kit/target/site/jacoco/jacoco.xml,blade-security/target/site/jacoco/jacoco.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload JaCoCo report artifact
+        uses: actions/upload-artifact@v4
+        if: matrix.java == 8
+        with:
+          name: jacoco-report
+          path: |
+            blade-core/target/site/jacoco/
+            blade-kit/target/site/jacoco/
+            blade-security/target/site/jacoco/
+
+  package:
+    name: Package & Verify
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: 8
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Package all modules
+        run: mvn clean package -DskipTests -B
+
+      - name: Build examples fat jar
+        run: |
+          if [ -f blade-examples/target/blade-examples-*.jar ]; then
+            echo "Fat jar built successfully"
+            ls -lh blade-examples/target/blade-examples-*.jar
+          else
+            echo "ERROR: Fat jar not found"
+            exit 1
+          fi
+
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: blade-artifacts
+          path: |
+            blade-core/target/*.jar
+            blade-kit/target/*.jar
+            blade-security/target/*.jar
+            blade-examples/target/*.jar
+
+  docker:
+    name: Docker Build Verification
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: blade-examples/Dockerfile
+          push: false
+          load: true
+          tags: blade-examples:ci-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify Docker image
+        run: |
+          docker run -d --name blade-test -p 9005:9005 blade-examples:ci-test
+          sleep 15
+          curl -sf http://localhost:9005/hello || (docker logs blade-test && exit 1)
+          docker stop blade-test
+          docker rm blade-test
+
+  benchmark:
+    name: Performance Benchmark
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: 8
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build project
+        run: mvn clean install -DskipTests -B
+
+      - name: Run JMH benchmarks
+        run: |
+          cd blade-benchmark
+          mvn clean package -DskipTests -B
+          java -jar target/benchmarks.jar -wi 2 -i 3 -f 1 -tu s
+        continue-on-error: true
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: blade-benchmark/target/jmh-result.json

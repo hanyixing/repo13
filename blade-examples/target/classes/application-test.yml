@@ -1,0 +1,36 @@
+# Test environment configuration
+server:
+  port: 9006
+  enable-cors: true
+
+blade:
+  env: test
+
+app:
+  version: 0.0.3
+
+# Logging - moderate output for testing
+logging:
+  level:
+    root: INFO
+    com.hellokaton.blade: INFO
+    com.example: DEBUG
+  file:
+    enabled: true
+    path: ./logs/test
+  console:
+    enabled: true
+
+# Database (test)
+# datasource:
+#   url: jdbc:mysql://localhost:3306/blade_test
+#   username: root
+#   password: test_password
+
+# Session
+session:
+  timeout: 1800
+
+# Rate limiting for tests
+rate-limit:
+  enabled: false

@@ -1,0 +1,48 @@
+# Production environment configuration
+server:
+  port: 9005
+  enable-cors: false
+
+blade:
+  env: prod
+
+app:
+  version: 0.0.3
+
+# Logging - minimal output for production
+logging:
+  level:
+    root: WARN
+    com.hellokaton.blade: WARN
+    com.example: INFO
+  file:
+    enabled: true
+    path: /var/log/blade
+  console:
+    enabled: false
+
+# Database (production - use environment variables for credentials)
+# datasource:
+#   url: ${DB_URL}
+#   username: ${DB_USERNAME}
+#   password: ${DB_PASSWORD}
+
+# Session
+session:
+  timeout: 900
+
+# Security
+security:
+  csrf:
+    enabled: true
+  rate-limit:
+    enabled: true
+    expression: "10/s"
+
+# Performance tuning
+netty:
+  tcp-nodelay: true
+  so-keepalive: true
+  so-backlog: 1024
+  boss-threads: 1
+  worker-threads: 4

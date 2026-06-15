@@ -1,0 +1,36 @@
+# Development environment configuration
+server:
+  port: 9005
+  enable-cors: true
+
+blade:
+  env: dev
+
+app:
+  version: 0.0.3
+
+# Logging - verbose output for development
+logging:
+  level:
+    root: DEBUG
+    com.hellokaton.blade: DEBUG
+    com.example: DEBUG
+  file:
+    enabled: true
+    path: ./logs/dev
+  console:
+    enabled: true
+
+# Database (development)
+# datasource:
+#   url: jdbc:mysql://localhost:3306/blade_dev
+#   username: root
+#   password: dev_password
+
+# Session
+session:
+  timeout: 3600
+
+# Hot reload
+dev:
+  hot-reload: true

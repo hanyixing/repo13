@@ -1,0 +1,11 @@
+dontinline,*.*_all_jmhStub
+dontinline,*.*_avgt_jmhStub
+dontinline,*.*_sample_jmhStub
+dontinline,*.*_ss_jmhStub
+dontinline,*.*_thrpt_jmhStub
+inline,com/hellokaton/blade/benchmark/BladeBenchmark.benchmarkDeepRoute
+inline,com/hellokaton/blade/benchmark/BladeBenchmark.benchmarkPathParamRoute
+inline,com/hellokaton/blade/benchmark/BladeBenchmark.benchmarkRouteMatching
+inline,com/hellokaton/blade/benchmark/BladeBenchmark.benchmarkStringKit
+inline,com/hellokaton/blade/benchmark/BladeBenchmark.benchmarkStringKitRand
+inline,com/hellokaton/blade/benchmark/BladeBenchmark.setUp
